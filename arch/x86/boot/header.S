@@ -36,7 +36,9 @@ SYSSEG		= 0x1000		/* historical load address >> 4 */
 #ifndef ROOT_RDONLY
 #define ROOT_RDONLY 1
 #endif
-
+! 여기서 부터 512 만큼은 bootsector의 이미지에 해당한다. 
+! 0x90000에 올라온다. 하지만 링커에의해 _start부터 시작한다.
+! 링커없이 시작되면 여기서부터 512 바이트가 MBR에 적혀 부트로더 역활을 하게된다.
 	.code16			! [bits 16]과 똑같다.
 	.section ".bstext", "ax" ! ".bstext"를 선언한다. "ax"는 flag이다.
 
@@ -272,14 +274,16 @@ boot_flag:	.word 0xAA55
 
 	# 여기 까지가 lilo와 grub 이 나오기 이전에 MBR영역에 해당하는 부분이다.
 	# offset 512, entry point
-	.globl	_start
-_start:
+	.globl	_start ! 0x902000 
+_start:		# 링커에의해서 시작번지가 지정된다. setup.ld를 참조하자
 		# Explicitly enter this as bytes, or the assembler
 		# tries to generate a 3-byte jump here, which causes
 		# everything else to push off to the wrong offset.
 		.byte	0xeb		# short (2-byte) jump
 		.byte	start_of_setup-1f	# header signature 까지는 2바이트 밖에 허용이 안된다.
 									# "HdrS"는 3byte(?)에 위치 하여야 한다.
+									# 부트로더들이 3byte이후의 signature, version number
+									# 참고하기 때문에...
 									# 1f는 레이블이라는 의미이다.
 									# start_of_setup레이블에서 1레이블을 뺀것이다.
 1:
@@ -436,7 +440,8 @@ handover_offset:
 	.section ".entrytext", "ax"
 start_of_setup:
 # Force %es = %ds
-	movw	%ds, %ax
+						!! lilo에서 ds, es를 0x90000으로 설정하였다.
+	movw	%ds, %ax	!! AT&T 문법에서는 ds => ax로 저장한다.
 	movw	%ax, %es
 	cld
 
@@ -445,33 +450,47 @@ start_of_setup:
 # pointer if %ss is invalid.  Otherwise leave it alone, LOADLIN sets up the
 # stack behind its own code, so we can't blindly put it directly past the heap.
 
-	movw	%ss, %dx
+	movw	%ss, %dx	!! 0x90000
 	cmpw	%ax, %dx	# %ds == %ss?
 	movw	%sp, %dx
 	je	2f		# -> assume %sp is reasonably set
+				!! 2f => forward 아래로 처음 만나는 레이블로 뛰어라
 
 	# Invalid %ss, make up a new stack
 	movw	$_end, %dx
 	testb	$CAN_USE_HEAP, loadflags
 	jz	1f
-	movw	heap_end_ptr, %dx
-1:	addw	$STACK_SIZE, %dx
+	movw	heap_end_ptr, %dx		!! heap을 사용하게되면 스택을
+									!! heap_end_ptr + STACK_SIZE만큼 사용하겠다.
+
+1:	addw	$STACK_SIZE, %dx		!! heap을 사용하지 않으면
+									!! _end + STACK_SIZE만클 사용하겠다.
 	jnc	2f
 	xorw	%dx, %dx	# Prevent wraparound
 
 2:	# Now %dx should point to the end of our stack space
 	andw	$~3, %dx	# dword align (might as well...)
+						!! stack의 end가 0인지 아닌지를 검사
 	jnz	3f
+						!! 0이면 0xfffc를 넣어준다.
 	movw	$0xfffc, %dx	# Make sure we're not zero
-3:	movw	%ax, %ss
+3:	movw	%ax, %ss	!! 스택의 시작은 0x90000으로 하고
+						!! 스택의 끝은 레이블 1,2,3에 의해 설정되어진다.
 	movzwl	%dx, %esp	# Clear upper half of %esp
+						!! esp의 하위16비트는 dx값으로 복사하고
+						!! 상위 16비트는 0으로 채운다.
 	sti			# Now we should have a working stack
 
 # We will have entered with %cs = %ds+0x20, normalize %cs so
 # it is on par with the other segments.
 	pushw	%ds
 	pushw	$6f
-	lretw
+	lretw				!! lretw가 cs + eip 를 가지고 far 점프를 하는데
+						!! 이때 스택에 저장되어 있는 두값을 pop 해서
+						!! eip(6f가저장)에 먼저 저장하고, cs(ds가 저장)에 저장하여
+						!! 점프를 하는데 그렇게 되면 바로 아래줄로 
+						!! 뛰어가게 된다.
+						!! 스택검사와 cs와 ds를 같게 만들어주기 위한 트릭이다.
 6:
 
 # Check signature at end of setup
@@ -484,7 +503,7 @@ start_of_setup:
 	xorl	%eax, %eax
 	subw	%di, %cx
 	shrw	$2, %cx
-	rep; stosl
+	rep; stosl			!! EAX -> es:di 로 저장
 
 # Jump to C code (should not return)
 	calll	main

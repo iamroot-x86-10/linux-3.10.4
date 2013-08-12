@@ -14,7 +14,11 @@
  */
 
 #include "boot.h"
-
+/*
+ * .bss 세션을 0으로 초기화하였기 때문에
+ * 초기화되지 않는 변수 boot_params는
+ * main.o의 0번지에 할당된다.
+ */
 struct boot_params boot_params __attribute__((aligned(16)));
 
 char *HEAP = _end;
@@ -26,6 +30,11 @@ char *heap_end = _end;		/* Default end of heap = no heap */
  * filling in the new-style command line pointer instead.
  */
 
+/*
+ * 0x9020:0x0000에 저장되어 있는  hdr 값을 boot_params에
+ * 저장하고, OLD_CL_MAGIC(second.S에서 설정)을 비교하여
+ * kernel command line 값을 설정한다.
+ */
 static void copy_boot_params(void)
 {
 	struct old_cmdline {
@@ -33,10 +42,12 @@ static void copy_boot_params(void)
 		u16 cl_offset;
 	};
 	const struct old_cmdline * const oldcmd =
-		(const struct old_cmdline *)OLD_CL_ADDRESS;
+		(const struct old_cmdline *)OLD_CL_ADDRESS;	// 0x9000:0x0020 second.S에서 
+													// CL_MAGIC코드를 적어놨다.
+													// 0xa33f
 
 	BUILD_BUG_ON(sizeof boot_params != 4096);
-	memcpy(&boot_params.hdr, &hdr, sizeof hdr);
+	memcpy(&boot_params.hdr, &hdr, sizeof hdr);		// header.S에 extern된 변수hdr을 접근
 
 	if (!boot_params.hdr.cmd_line_ptr &&
 	    oldcmd->cl_magic == OLD_CL_MAGIC) {
@@ -119,6 +130,12 @@ static void init_heap(void)
 	if (boot_params.hdr.loadflags & CAN_USE_HEAP) {
 		asm("leal %P1(%%esp),%0"
 		    : "=r" (stack_end) : "i" (-STACK_SIZE));
+		/*
+		 * %P1는 입력 값과 더하기를 한다. 
+		 *
+		 * 역어셈블
+		 * lea ebx, [esp-0x200]
+		 */
 
 		heap_end = (char *)
 			((size_t)boot_params.hdr.heap_end_ptr + 0x200);
