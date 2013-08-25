@@ -88,6 +88,7 @@ static void keyboard_init(void)
 /*
  * Get Intel SpeedStep (IST) information.
  */
+//!! IST : 업무량에 따라서 CPU clock 을 조정해서 사용하는 기능
 static void query_ist(void)
 {
 	struct biosregs ireg, oreg;
@@ -119,7 +120,15 @@ static void set_bios_mode(void)
 	initregs(&ireg);
 	ireg.ax = 0xec00;
 	ireg.bx = 2;
-	intcall(0x15, &ireg, NULL);
+	intcall(0x15, &ireg, NULL);	//!! asmlinkage 선언이 없을 경우 fastcall 을 위해서 인자는 register 에 저장
+								//!! eax = 0x15, ebx = &ireg, ecx = null
+								//!! CPU 가 64 비트 모드로 동작함을 바이오스에게 알려주는  함수, eax = 0xEC00, bl = 2
+// 참고 : AMD CPU 매뉴얼, 
+//Based on the target operating mode, the BIOS
+//can enable or disable mode specific performance and functional optimizations that are not visible to
+//system software.
+//This callback does not change the operating mode; it only declares the target mode to the BIOS. It
+//should be executed only once by the BSP before the first transition into long mode.
 #endif
 }
 
@@ -165,7 +174,7 @@ void main(void)
 	if (validate_cpu()) {
 		puts("Unable to boot - please use a kernel appropriate "
 		     "for your CPU.\n");
-		die();
+		die();	//!! exit 1
 	}
 
 	/* Tell the BIOS what CPU mode we intend to run in. */
@@ -177,7 +186,7 @@ void main(void)
 	/* Set keyboard repeat rate (why?) and query the lock flags */
 	keyboard_init();
 
-	/* Query MCA information */
+	/* Query MCA information */	//!! old arch 로 생략
 	query_mca();
 
 	/* Query Intel SpeedStep (IST) information */

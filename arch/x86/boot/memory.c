@@ -17,6 +17,9 @@
 
 #define SMAP	0x534d4150	/* ASCII "SMAP" */
 
+// BIOS 가 가지고 있는 메모리 맵 정보를 받아오는 함수
+// 4GB 이상의 메모리를 지원하도록 신규 추가된 함수
+// return : 물리 메모리 갯수
 static int detect_memory_e820(void)
 {
 	int count = 0;
@@ -71,6 +74,7 @@ static int detect_memory_e820(void)
 	return boot_params.e820_entries = count;
 }
 
+//!! 0~15M, 16M 이상의 물리 메모리 정보를 가져오는 함수
 static int detect_memory_e801(void)
 {
 	struct biosregs ireg, oreg;
@@ -106,6 +110,7 @@ static int detect_memory_e801(void)
 	return 0;
 }
 
+//!! 0-15M 사이의 물리 메모리 정보를 가져오는 함수
 static int detect_memory_88(void)
 {
 	struct biosregs ireg, oreg;

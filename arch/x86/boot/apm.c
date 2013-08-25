@@ -15,6 +15,7 @@
 /*
  * Get APM BIOS information
  */
+// APM : Advanced Power Managemet 로 현재는 ACPI 로 대체
 
 #include "boot.h"
 

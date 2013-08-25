@@ -118,6 +118,7 @@ static int get_edd_info(u8 devno, struct edd_info *ei)
 	return 0;
 }
 
+// edd : Enhanced Disk Drive
 void query_edd(void)
 {
 	char eddarg[8];

@@ -262,6 +262,8 @@ section_table:
 	.globl	sentinel
 sentinel:	.byte 0xff, 0xff        /* Used to detect broken loaders */
 
+
+	!@_@! 아래 값들은 리눅스를 빌드할 때 채워지는 값으로 빌더에서 정보를 읽어서 저장하는 것임
 	.globl	hdr
 hdr:
 setup_sects:	.byte 0			/* Filled in by build.c */

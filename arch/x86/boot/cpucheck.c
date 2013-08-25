@@ -32,7 +32,8 @@ struct cpu_features cpu;
 static u32 cpu_vendor[3];
 static u32 err_flags[NCAPINTS];
 
-static const int req_level = CONFIG_X86_MINIMUM_CPU_FAMILY;
+static const int req_level = CONFIG_X86_MINIMUM_CPU_FAMILY;	//!! CONFIG_X86_MINIMUM_CPU_FAMILY = 5
+															//!! kconfig 에서 설정하는 값
 
 static const u32 req_flags[NCAPINTS] =
 {
@@ -119,7 +120,7 @@ static int has_eflag(u32 mask)
 	    : "=&r" (f0), "=&r" (f1)
 	    : "ri" (mask));
 
-	return !!((f0^f1) & mask);
+	return !!((f0^f1) & mask);	// mask 값이 실제 CPU flag 에 값이 설정되는지 확인하는 방법, return 값은 true or flase
 }
 
 static void get_flags(void)
@@ -193,6 +194,7 @@ static int check_flags(void)
  *
  * *err_flags_ptr is set to the flags error array if there are flags missing.
  */
+//!! INTEL CPU 패밀리에서 특정 모드 or 기능을 제공하는 CPU 를 확인하는 과정
 int check_cpu(int *cpu_level_ptr, int *req_level_ptr, u32 **err_flags_ptr)
 {
 	int err;
@@ -204,7 +206,7 @@ int check_cpu(int *cpu_level_ptr, int *req_level_ptr, u32 **err_flags_ptr)
 		cpu.level = 4;
 
 	get_flags();				//2013.08.10 
-	err = check_flags();
+	err = check_flags();		//!! INTEL CPU 인지 확인하기 위해서 flag 를 가져옴
 
 	if (test_bit(X86_FEATURE_LM, cpu.flags))
 		cpu.level = 64;
@@ -215,11 +217,12 @@ int check_cpu(int *cpu_level_ptr, int *req_level_ptr, u32 **err_flags_ptr)
 	    is_amd()) {
 		/* If this is an AMD and we're only missing SSE+SSE2, try to
 		   turn them on */
-
+		//!! AMD CPU 인 경우
 		u32 ecx = MSR_K7_HWCR;
 		u32 eax, edx;
 
-		asm("rdmsr" : "=a" (eax), "=d" (edx) : "c" (ecx));
+		asm("rdmsr" : "=a" (eax), "=d" (edx) : "c" (ecx));	//!! 64모드인지 확인
+															//!! rdmsr : read msr 
 		eax &= ~(1 << 15);
 		asm("wrmsr" : : "a" (eax), "d" (edx), "c" (ecx));
 

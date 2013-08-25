@@ -40,6 +40,7 @@ int validate_cpu(void)
 
 	check_cpu(&cpu_level, &req_level, &err_flags);
 
+	//!! 현재 CPU 레벨이 요구되는 CPU 레벨 보다 낮은 경우 에러 리턴 
 	if (cpu_level < req_level) {
 		printf("This kernel requires an %s CPU, ",
 		       cpu_name(req_level));
