@@ -211,10 +211,15 @@ int check_cpu(int *cpu_level_ptr, int *req_level_ptr, u32 **err_flags_ptr)
 	if (test_bit(X86_FEATURE_LM, cpu.flags))
 		cpu.level = 64;
 
+	/*
+ 		req_flags[0]만 검사하면 intel 호환인지만 판단한다.
+		amd도 req_flgs[0]은 똑같이 사용할 것이다. 
+	 */
 	if (err == 0x01 &&
 	    !(err_flags[0] &
 	      ~((1 << X86_FEATURE_XMM)|(1 << X86_FEATURE_XMM2))) &&
 	    is_amd()) {
+		
 		/* If this is an AMD and we're only missing SSE+SSE2, try to
 		   turn them on */
 		//!! AMD CPU 인 경우

@@ -132,6 +132,19 @@ static void set_bios_mode(void)
 #endif
 }
 
+
+
+/*
+ * 0x90000 +---------------------------+
+ *         |          header.S         |
+ * 0x98000 +---------------------------+ _end == heap_end_ptr
+ *         |		   heap			   |	
+ * 0x99800 +---------------------------+ heap_end
+ *         |                           |
+ * 0x9AE00 +---------------------------+ stack_end
+ *         |           stack           |
+ * 0x9B000 +---------------------------+ esp
+*/
 static void init_heap(void)
 {
 	char *stack_end;
@@ -196,7 +209,7 @@ void main(void)
 #if defined(CONFIG_APM) || defined(CONFIG_APM_MODULE)
 	query_apm_bios();
 #endif
-
+	//!! 2013.08.24
 	/* Query EDD information */
 #if defined(CONFIG_EDD) || defined(CONFIG_EDD_MODULE)
 	query_edd();

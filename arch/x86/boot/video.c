@@ -17,6 +17,10 @@
 #include "video.h"
 #include "vesa.h"
 
+/*
+ * boot_params.screen에 현재 cursor 의 정보를 저장한다.
+ * 잘못된 커서 위치이면. VIDEO_FALGS_NOCURSOR을 설정한다.
+ */  
 static void store_cursor_position(void)
 {
 	struct biosregs ireg, oreg;
@@ -27,7 +31,7 @@ static void store_cursor_position(void)
 
 	boot_params.screen_info.orig_x = oreg.dl;
 	boot_params.screen_info.orig_y = oreg.dh;
-
+					
 	if (oreg.ch & 0x20)
 		boot_params.screen_info.flags |= VIDEO_FLAGS_NOCURSOR;
 

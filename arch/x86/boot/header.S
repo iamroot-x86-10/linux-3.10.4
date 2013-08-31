@@ -476,6 +476,12 @@ start_of_setup:
 	jnz	3f
 						!! 0이면 0xfffc를 넣어준다.
 	movw	$0xfffc, %dx	# Make sure we're not zero
+						!! decrements the stack pointer and then stores the
+						!! source operand on the op of the stack.
+						!! Documantation/arch/boot/boot.txt를 참고하면
+						!! 스택이 위치할 수 있는 최상위는 0x100000이다.
+						!! 그래서 4bytes의 경계로 사용하는 거같다. 
+						
 3:	movw	%ax, %ss	!! 스택의 시작은 0x90000으로 하고
 						!! 스택의 끝은 레이블 1,2,3에 의해 설정되어진다.
 	movzwl	%dx, %esp	# Clear upper half of %esp
