@@ -33,16 +33,27 @@ int graphic_mode;	/* Graphic mode with linear frame buffer */
 void probe_cards(int unsafe)
 {
 	struct card_info *card;
-	static u8 probed[2];
+	static u8 probed[2]; //!!unsafe = 0 or 1값으로 지정
+	/* unsafe probe와 safe probe의 차이점을 모르고 있다. */
 
+	/* 다음에 다시 호출되면 실행하지 않음 */
 	if (probed[unsafe])
 		return;
 
 	probed[unsafe] = 1;
 
+	/* video card 정보를 다 가지고 있는 section
+	 * .videocards (setup.ld 참조)에 card 정보를 배열로 가지고 있음
+	 * 여기에서 card 정보를 하나씩 가져와서, mode를 조사함 
+	 * unsafe = 0 인 경우, vga, vesa 방식(video-vga.c, video-vesa.c)의 video_card를 조사
+	 * unsafe = 1 인 경우, bios 방식(video-biods.c) 의 vide_card를 조사
+	 */
 	for (card = video_cards; card < video_cards_end; card++) {
 		if (card->unsafe == unsafe) {
 			if (card->probe)
+				/* 
+				 * VGA vide card의 경우: CGA = 1, EGA = 2, VGA = 7
+				 */
 				card->nmodes = card->probe();
 			else
 				card->nmodes = 0;

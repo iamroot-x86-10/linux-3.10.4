@@ -19,7 +19,7 @@
 
 /*
  * boot_params.screen에 현재 cursor 의 정보를 저장한다.
- * 잘못된 커서 위치이면. VIDEO_FALGS_NOCURSOR을 설정한다.
+ * 잘못된 커서 위치이면. VIDEO_FLAGS_NOCURSOR을 설정한다.
  */  
 static void store_cursor_position(void)
 {
@@ -35,10 +35,14 @@ static void store_cursor_position(void)
 	if (oreg.ch & 0x20)
 		boot_params.screen_info.flags |= VIDEO_FLAGS_NOCURSOR;
 
+	//!!Scan line의 시작 위치(ch)가 끝위치(cl)보다 크면 error!
 	if ((oreg.ch & 0x1f) > (oreg.cl & 0x1f))
 		boot_params.screen_info.flags |= VIDEO_FLAGS_NOCURSOR;
 }
 
+/*
+ * Video Mode(al)와 Video Page(bh)를 읽어와서 boot_params에 저장 
+ */
 static void store_video_mode(void)
 {
 	struct biosregs ireg, oreg;
@@ -82,10 +86,15 @@ static void store_mode_params(void)
 	}
 
 	set_fs(0);
+	/* 0x0:485 (BIOS영역의 font size)를 읽어서 font_size에 넣어라.*/
 	font_size = rdfs16(0x485); /* Font size, BIOS area */
 	boot_params.screen_info.orig_video_points = font_size;
 
+	/* 0x0:44a에 가로폭, CGA인 경우 25 line,
+	   0x0:484에서 값을 읽어 1을 더한값을 line수로 정함 */
 	x = rdfs16(0x44a);
+	/* adapter, force_x, force_y는 처음 boot시에는 0으로 setting
+	   이후에 video mode가 setting되면 새로운 값으로 변경될 것으로 생각*/
 	y = (adapter == ADAPTER_CGA) ? 25 : rdfs8(0x484)+1;
 
 	if (force_x)
@@ -93,6 +102,7 @@ static void store_mode_params(void)
 	if (force_y)
 		y = force_y;
 
+	/* boot_params에 해당 x, y값을 저장 */
 	boot_params.screen_info.orig_video_cols  = x;
 	boot_params.screen_info.orig_video_lines = y;
 }
@@ -165,6 +175,7 @@ static void display_menu(void)
 		for (i = 0; i < card->nmodes; i++, mi++) {
 			char resbuf[32];
 			int visible = mi->x && mi->y;
+			/* 혹시 bios? 나중에 다시 확인 필요 */
 			u16 mode_id = mi->mode ? mi->mode :
 				(mi->y << 8)+mi->x;
 
@@ -183,7 +194,7 @@ static void display_menu(void)
 				putchar('\n');
 				col = 0;
 			}
-
+			/* 0-9 a-z까지 line number 출력 */
 			if (ch == '9')
 				ch = 'a';
 			else if (ch == 'z' || ch == ' ')
@@ -204,10 +215,13 @@ static unsigned int mode_menu(void)
 	int key;
 	unsigned int sel;
 
+	/* tty랑 Serial이 있는 경우 serial에도 message를 출력 */
 	puts("Press <ENTER> to see video modes available, "
 	     "<SPACE> to continue, or wait 30 sec\n");
 
+	/* keyboard buffer flush */
 	kbd_flush();
+	/* 30초 동안, key가 입력되었는지 검사, 이상한 키가 눌리면 Beep음을 냄 */
 	while (1) {
 		key = getchar_timeout();
 		if (key == ' ' || key == 0)
@@ -223,6 +237,7 @@ static unsigned int mode_menu(void)
 
 		puts("Enter a video mode or \"scan\" to scan for "
 		     "additional modes: ");
+		//!! 2013.8.31 end!!
 		sel = get_entry();
 		if (sel != SCAN)
 			return sel;
@@ -237,7 +252,9 @@ static struct saved_screen {
 	int curx, cury;
 	u16 *data;
 } saved;
-
+/*
+ * 현재 screen의 크기를 heap에 저장
+ */
 static void save_screen(void)
 {
 	/* Should be called after store_mode_params() */
@@ -246,12 +263,18 @@ static void save_screen(void)
 	saved.curx = boot_params.screen_info.orig_x;
 	saved.cury = boot_params.screen_info.orig_y;
 
+	/*
+	 * heap에screen 크기를 저장할 충분한 공간이 있는지 검사하는 코드
+	 * 512를 왜 더하는지 모르겠다. 누군가 찾아주길...
+	 */
 	if (!heap_free(saved.x*saved.y*sizeof(u16)+512))
 		return;		/* Not enough heap to save the screen */
 
+	/* unsigned 16bit type으로 heap공간을 할당 */
 	saved.data = GET_HEAP(u16, saved.x*saved.y);
 
 	set_fs(video_segment);
+	/* video_segment의 값을 saved.data로 복사 */
 	copy_from_fs(saved.data, 0, saved.x*saved.y*sizeof(u16));
 }
 
@@ -324,9 +347,14 @@ void set_video(void)
 
 	store_mode_params();
 	save_screen();
+	/* video card 정보를 얻어오는 코드. */
 	probe_cards(0);
 
 	for (;;) {
+		/*
+		 * kernel parameter에서 ask를 주면 VGA mode 조사 가능 (ASK_VGA)
+		 * kernel commandline에 입력 가능
+		 */
 		if (mode == ASK_VGA)
 			mode = mode_menu();
 

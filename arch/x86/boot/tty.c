@@ -95,7 +95,9 @@ int getchar(void)
 
 	return oreg.al;
 }
-
+/* 
+ * keyboard가 눌릴 때까지 기다린다.
+ */
 static int kbd_pending(void)
 {
 	struct biosregs ireg, oreg;
@@ -107,6 +109,11 @@ static int kbd_pending(void)
 	return !(oreg.eflags & X86_EFLAGS_ZF);
 }
 
+/* 
+ * keyboard buffer를 제거하는 코드 
+ * keyboard가 입력이 있으면 getchar()에서 읽는다.
+ * keyboard의 입력이 없어지면 break;로 빠져나옴
+ */
 void kbd_flush(void)
 {
 	for (;;) {
@@ -116,6 +123,9 @@ void kbd_flush(void)
 	}
 }
 
+/*
+ * 대략 30초 정도 기다린다.
+ */
 int getchar_timeout(void)
 {
 	int cnt = 30;

@@ -16,7 +16,11 @@
 
 	.code16gcc
 	.text
-
+/*
+ * ax(dst), dx(src), cx(len)이고,
+ *  처음에는 4byte씩 복사 (shrw $2, %cx)
+ *  4byte 미만을 1byte씩 복사 (andw $3, %cx)
+ */
 GLOBAL(memcpy)
 	pushw	%si
 	pushw	%di

@@ -230,20 +230,24 @@ static int vga_set_mode(struct mode_info *mode)
  * systems.  It should be executed first, by making sure
  * video-vga.c is listed first in the Makefile.
  */
+/*
+ * CGA/EGA/VGA인지 검사하여, cardname, mode_list, mode_count를 넘겨줌.
+ * mode_count : CGA = 1, EGA = 2, VGA = 7
+ */
 static int vga_probe(void)
 {
 	static const char *card_name[] = {
 		"CGA/MDA/HGC", "EGA", "VGA"
 	};
 	static struct mode_info *mode_lists[] = {
-		cga_modes,
-		ega_modes,
+		cga_modes, 
+		ega_modes, 
 		vga_modes,
 	};
 	static int mode_count[] = {
-		sizeof(cga_modes)/sizeof(struct mode_info),
-		sizeof(ega_modes)/sizeof(struct mode_info),
-		sizeof(vga_modes)/sizeof(struct mode_info),
+		sizeof(cga_modes)/sizeof(struct mode_info), /* 1 */
+		sizeof(ega_modes)/sizeof(struct mode_info), /* 2 */
+		sizeof(vga_modes)/sizeof(struct mode_info), /* 7 */
 	};
 
 	struct biosregs ireg, oreg;
@@ -259,11 +263,13 @@ static int vga_probe(void)
 #endif
 
 	/* If we have MDA/CGA/HGC then BL will be unchanged at 0x10 */
+	/* 0x10은 CGA인 경우 */
 	if (oreg.bl != 0x10) {
 		/* EGA/VGA */
 		ireg.ax = 0x1a00;
 		intcall(0x10, &ireg, &oreg);
-
+		
+		/* VGA인지 check */
 		if (oreg.al == 0x1a) {
 			adapter = ADAPTER_VGA;
 #ifndef _WAKEUP

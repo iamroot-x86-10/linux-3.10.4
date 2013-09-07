@@ -44,6 +44,11 @@ static int vesa_probe(void)
 	ireg.di = (size_t)&vginfo;
 	intcall(0x10, &ireg, &oreg);
 
+	/*
+	 *  ax = 0x004f 인 경우 VESA super VGA가 가능
+	 *	VESA_MAGIC = "VESA" 
+	 * 	version >= v1.2 이어야 함
+	 */
 	if (oreg.ax != 0x004f ||
 	    vginfo.signature != VESA_MAGIC ||
 	    vginfo.version < 0x0102)
@@ -57,7 +62,12 @@ static int vesa_probe(void)
 
 		if (!heap_free(sizeof(struct mode_info)))
 			break;	/* Heap full, can't save mode info */
-
+		
+		/* 
+		 *  0x200 미만만 보겠다.
+		 *  0x100~0x11B VESA
+		 *  0x201~x301 S3 
+		 */
 		if (mode & ~0x1ff)
 			continue;
 
@@ -67,10 +77,21 @@ static int vesa_probe(void)
 		ireg.cx = mode;
 		ireg.di = (size_t)&vminfo;
 		intcall(0x10, &ireg, &oreg);
-
+		
+		/* ax가 0x004f 이면 VESA mode 지원 가능 */
 		if (oreg.ax != 0x004f)
 			continue;
 
+		/*
+		 * Linux에서는 graphic mode사용시에 VIDEO_FIRST_VESA(512 or 0x200)을 
+		 * 더해준다. 
+		 * 참고자료 : http://en.wikipedia.org/wiki/VESA_BIOS_Extensions
+		 */
+		/*
+		 * 0x15 = 0000 0000 0001 0101
+		 * 0x05 = 0000 0000 0000 0101
+		 * http://www.delorie.com/djgpp/doc/rbinter/it/80/0.html
+		 */
 		if ((vminfo.mode_attr & 0x15) == 0x05) {
 			/* Text Mode, TTY BIOS supported,
 			   supported by hardware */
@@ -80,6 +101,11 @@ static int vesa_probe(void)
 			mi->x     = vminfo.h_res;
 			mi->y     = vminfo.v_res;
 			nmodes++;
+			/* Graphic Mode */
+			/*
+			 * 0x99 = 0000 0000 1001 1001
+			 * http://www.delorie.com/djgpp/doc/rbinter/it/80/0.html
+			 */
 		} else if ((vminfo.mode_attr & 0x99) == 0x99 &&
 			   (vminfo.memory_layout == 4 ||
 			    vminfo.memory_layout == 6) &&

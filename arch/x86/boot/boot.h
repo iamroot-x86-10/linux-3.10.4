@@ -88,7 +88,9 @@ static inline u16 ds(void)
 	asm("movw %%ds,%0" : "=rm" (seg));
 	return seg;
 }
-
+/*
+ * fs 레지스터에 0을 넣어준다.
+ */
 static inline void set_fs(u16 seg)
 {
 	asm volatile("movw %0,%%fs" : : "rm" (seg));
