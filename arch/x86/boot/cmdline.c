@@ -43,10 +43,12 @@ int __cmdline_find_option(unsigned long cmdline_ptr, const char *option, char *b
 
 	if (!cmdline_ptr)
 		return -1;      /* No command line */
-
-	cptr = cmdline_ptr & 0xf;
-	set_fs(cmdline_ptr >> 4);
-
+	/* 마지막 4bit 를 cptr에 저장*/
+	/* 4bit는 오프셋으로 사용하고 
+	   나머지 상위 비트들은 세그먼트로 사용하겠다*/
+	cptr = cmdline_ptr & 0xf;	//오프셋
+	set_fs(cmdline_ptr >> 4);	//세그먼트로 사용하겠다.
+	
 	while (cptr < 0x10000 && (c = rdfs8(cptr++))) {
 		switch (state) {
 		case st_wordstart:

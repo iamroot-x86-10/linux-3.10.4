@@ -87,7 +87,14 @@ static int raw_set_mode(u16 mode, u16 *real_mode)
 	struct mode_info *mi;
 
 	/* Drop the recalc bit if set */
-	mode &= ~VIDEO_RECALC;
+
+   /* From Documentaion/svga.txt
+	  If you add 0x8000 to the mode ID, the program will try to recalculate
+vertical display timing according to mode parameters, which can be used to
+eliminate some annoying bugs of certain VGA BIOSes (usually those used for
+cards with S3 chipsets and old Cirrus Logic BIOSes) -- mainly extra lines at the
+end of the display.*/
+	mode &= ~VIDEO_RECALC;  // ~VIDEO_RECALC => 0x7FFF
 
 	/* Scan for mode based on fixed ID, position, or resolution */
 	nmode = 0;
@@ -96,9 +103,11 @@ static int raw_set_mode(u16 mode, u16 *real_mode)
 		for (i = 0; i < card->nmodes; i++, mi++) {
 			int visible = mi->x || mi->y;
 
-			if ((mode == nmode && visible) ||
-			    mode == mi->mode ||
-			    mode == (mi->y << 8)+mi->x) {
+			/* 모드 값은 3가지 형태로 저장되어 있는데
+			   그중 하나만 걸리면 set_mode()를 호출하고 리턴한다. */
+			if ((mode == nmode && visible) ||	// 사용자가 선택한 번호를 모드로 설정한 경우
+			    mode == mi->mode ||				// 기본 모드 설정
+			    mode == (mi->y << 8)+mi->x) {	//VESA가 모드를 이렇게 설정하였다.
 				*real_mode = mi->mode;
 				return card->set_mode(mi);
 			}
@@ -139,9 +148,9 @@ static void vga_recalc_vertical(void)
 	rows *= font_size;	/* Visible scan lines */
 	rows--;			/* ... minus one */
 
-	crtc = vga_crtc();
+	crtc = vga_crtc(); //0x3d4 로 예상하고 있다.
 
-	pt = in_idx(crtc, 0x11);
+	pt = in_idx(crtc, 0x11); //verical retrace end: 
 	pt &= ~0x80;		/* Unlock CR0-7 */
 	out_idx(pt, crtc, 0x11);
 
@@ -167,7 +176,8 @@ int set_mode(u16 mode)
 		mode = VIDEO_80x25;
 	else if (mode == EXTENDED_VGA)
 		mode = VIDEO_8POINT;
-
+	
+	/* 0 이면 성공, -1이면 실패*/
 	rv = raw_set_mode(mode, &real_mode);
 	if (rv)
 		return rv;

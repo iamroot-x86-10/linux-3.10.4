@@ -292,7 +292,8 @@ int __cmdline_find_option_bool(unsigned long cmdline_ptr, const char *option);
 static inline int cmdline_find_option(const char *option, char *buffer, int bufsize)
 {
 	unsigned long cmd_line_ptr = boot_params.hdr.cmd_line_ptr;
-
+	
+	/* protected mode의 주소 범의이면 */
 	if (cmd_line_ptr >= 0x100000)
 		return -1;      /* inaccessible */
 

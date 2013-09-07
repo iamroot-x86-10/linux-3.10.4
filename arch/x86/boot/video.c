@@ -113,11 +113,12 @@ static unsigned int get_entry(void)
 	int i, len = 0;
 	int key;
 	unsigned int v;
-
+	
+	/* 사용자가 입력하거나 지우거나 하는 행위를 처리*/
 	do {
 		key = getchar();
 
-		if (key == '\b') {
+		if (key == '\b') {	
 			if (len > 0) {
 				puts("\b \b");
 				len--;
@@ -132,11 +133,14 @@ static unsigned int get_entry(void)
 		}
 	} while (key != '\r');
 	putchar('\n');
-
+	
+	/* 사용자가 입력하지 않았으면 Vidio mode를 Default로 지정*/
 	if (len == 0)
 		return VIDEO_CURRENT_MODE; /* Default */
 
 	v = 0;
+	/* 문자 값을 숫자로 바꿔서 출력 
+	 * 대문자는 소문자로 변경하여 입력값을 변경 */
 	for (i = 0; i < len; i++) {
 		v <<= 4;
 		key = entry_buf[i] | 0x20;
@@ -277,6 +281,11 @@ static void save_screen(void)
 	/* video_segment의 값을 saved.data로 복사 */
 	copy_from_fs(saved.data, 0, saved.x*saved.y*sizeof(u16));
 }
+
+
+/*
+ * 
+ */
 
 static void restore_screen(void)
 {

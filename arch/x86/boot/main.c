@@ -217,7 +217,7 @@ void main(void)
 
 	/* Set the video mode */
 	set_video();
-
+	//!! 2013.09.07
 	/* Do the last things and invoke protected mode */
 	go_to_protected_mode();
 }

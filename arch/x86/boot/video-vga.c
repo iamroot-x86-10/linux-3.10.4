@@ -66,7 +66,9 @@ static void vga_set_8font(void)
 	struct biosregs ireg;
 
 	initregs(&ireg);
-
+	/* VGA카드에 charactor generation rom에 있는font 롬에이 있는
+	   값을 보고 찍게 해주게 한다. 
+	   fort rom으로 검색해보자*/
 	/* Set 8x8 font */
 	ireg.ax = 0x1112;
 	/* ireg.bl = 0; */
@@ -133,6 +135,14 @@ static void vga_set_80x43(void)
 /* I/O address of the VGA CRTC */
 u16 vga_crtc(void)
 {
+	/* 0x3cc address에서 1 byte를 읽어온다. */
+	/* http://wiki.osdev.org/VGA_Hardware 참고 */ 
+	/* This is the miscellaneous output register. 
+	   It uses port 0x3C2 for writing, and 0x3CC for reading. 
+	   Bit 0 of this register controls the location of several other registers: 
+	   if cleared, port 0x3D4 is mapped to 0x3B4, and port 0x3DA is mapped to 0x3BA. 
+	   For readability, only the first port is listed and bit 0 is assumed to be set. */
+	/* CRTC가 셋팅이 되어 있으면 0x3d4를 리턴하고 아니면 0x3b4 를 리턴한다. */
 	return (inb(0x3cc) & 1) ? 0x3d4 : 0x3b4;
 }
 
@@ -193,6 +203,7 @@ static void vga_set_80x60(void)
 static int vga_set_mode(struct mode_info *mode)
 {
 	/* Set the basic mode */
+	/* 80x25*/
 	vga_set_basic_mode();
 
 	/* Override a possibly broken BIOS */
