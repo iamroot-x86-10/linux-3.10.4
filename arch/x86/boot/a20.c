@@ -29,14 +29,20 @@ static int empty_8042(void)
 
 		status = inb(0x64);
 		if (status == 0xff) {
+			/* 0xFF는 정상적인 상황이 아니다.
+			   status 값을 읽어오는게 실패했다. */
 			/* FF is a plausible, but very unlikely status */
 			if (!--ffs)
 				return -1; /* Assume no KBC present */
 		}
 		if (status & 1) {
+			/* 키보드의 버퍼의 데이터가 있다.*/
 			/* Read and discard input data */
 			io_delay();
+			/* 키보드 버퍼 내용을 비운다.*/
+			/* 0x60은 키보드의 1byte를 읽어오는 포트번호*/
 			(void)inb(0x60);
+
 		} else if (!(status & 2)) {
 			/* Buffers empty, finished! */
 			return 0;
@@ -59,18 +65,26 @@ static int a20_test(int loops)
 	int saved, ctr;
 
 	set_fs(0x0000);
-	set_gs(0xffff);
-
-	saved = ctr = rdfs32(A20_TEST_ADDR);
+	set_gs(0xffff);	/* +1 했을때 0x0000이 되는냐? 아니면 0x10000이 되는냐? */
+					
+	saved = ctr = rdfs32(A20_TEST_ADDR);	/* 0x0000:200 의 값을 ctr, saved에 저장*/
 
 	while (loops--) {
+		/* 0x0000:200에 ctr++ 값을 써본다. */
 		wrfs32(++ctr, A20_TEST_ADDR);
 		io_delay();	/* Serialize and make delay constant */
+		/* 0xFFFF:210의 값을 읽어와서 ctr과 '^'을 계산한다. */
+		/* 0xFFFF:210 = 100200 */
+
+		/* 만약, A20이 껴져있다면
+		   0x0000:200 과 0x0000:200를 비교하는 거고,
+		   A20이 켜져있다면
+		   0x0000:200 과 0x10000:200을 비교하는 의미가 된다. */
 		ok = rdgs32(A20_TEST_ADDR+0x10) ^ ctr;
 		if (ok)
-			break;
+			break; /* ok==1 A20이 켜져있는거고, 그렇지 않으면 껴져있는것이다. */
 	}
-
+	/* 수정했으니깐 복구 */
 	wrfs32(saved, A20_TEST_ADDR);
 	return ok;
 }
@@ -91,19 +105,39 @@ static int a20_test_long(void)
 static void enable_a20_bios(void)
 {
 	struct biosregs ireg;
-
+	
 	initregs(&ireg);
 	ireg.ax = 0x2401;
 	intcall(0x15, &ireg, NULL);
 }
 
+/*
+http://www.brokenthorn.com/Resources/OSDev19.html 참고
+
+Keyboard Controller Ports
+Port	Read/Write	Descripton
+Keyboard Encoder
+0x60	Read	Read Input Buffer
+0x60	Write	Send Command
+Onboard Keyboard Controller
+0x64	Read	Status Register
+0x64	Write	Send Command
+*/
+/* 
+   키보드를 이용해서 A20을 활성화 한다.
+   */
 static void enable_a20_kbc(void)
 {
 	empty_8042();
-
+	
+	/* 0xD1: Write Output port */
+	/* Keyboard Command를 쓰겠다! */
 	outb(0xd1, 0x64);	/* Command write */
 	empty_8042();
 
+	/* http://www.brokenthorn.com/Resources/OSDev19.html */
+	/* Onboard Keyboard Controller Commands 참고 */
+	/* 0xDF: Enable A20 Address Line */
 	outb(0xdf, 0x60);	/* A20 on */
 	empty_8042();
 
@@ -115,6 +149,9 @@ static void enable_a20_fast(void)
 {
 	u8 port_a;
 
+	/*http://www.win.tue.nl/~aeb/linux/kbd/A20.html */
+	/* 키보드 콘트롤러가 없을 때 */
+	/* 안정적인 방법이 아니다. */
 	port_a = inb(0x92);	/* Configuration port A */
 	port_a |=  0x02;	/* Enable A20 */
 	port_a &= ~0x01;	/* Do not reset machine */
@@ -135,10 +172,12 @@ int enable_a20(void)
        while (loops--) {
 	       /* First, check to see if A20 is already enabled
 		  (legacy free, etc.) */
+		   /* A20이 셋팅되어 있으면 리턴한다.*/
 	       if (a20_test_short())
 		       return 0;
 	       
 	       /* Next, try the BIOS (INT 0x15, AX=0x2401) */
+		   /* 왠만하면 여기에 걸릴것이다. */
 	       enable_a20_bios();
 	       if (a20_test_short())
 		       return 0;
@@ -148,9 +187,12 @@ int enable_a20(void)
 
 	       if (a20_test_short())
 		       return 0; /* BIOS worked, but with delayed reaction */
-	
+			
+		   /* kec_err==0 이면 키보드가 정상 */
 	       if (!kbc_err) {
+			   /* 키보드를 이용하여 A20활성화*/
 		       enable_a20_kbc();
+			   /* 키보드라고오래걸리는 거 같음*/
 		       if (a20_test_long())
 			       return 0;
 	       }

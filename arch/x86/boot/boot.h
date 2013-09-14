@@ -77,6 +77,10 @@ static inline u32 inl(u16 port)
 static inline void io_delay(void)
 {
 	const u16 DELAY_PORT = 0x80;
+	/* "dN" edx값을 0~255의 값으로 바꿔준다. */
+	/* 0x80포트 bios post 테스트에 쓰는 포트로 몇몇 OS
+	   들이 delay용으로 사용하곤 한다. 
+	   'al'은 의미가 없다. */
 	asm volatile("outb %%al,%0" : : "dN" (DELAY_PORT));
 }
 
