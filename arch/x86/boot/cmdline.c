@@ -29,7 +29,7 @@ static inline int myisspace(u8 c)
  */
 int __cmdline_find_option(unsigned long cmdline_ptr, const char *option, char *buffer, int bufsize)
 {
-	addr_t cptr;
+	addr_t cptr;		//unsigned int
 	char c;
 	int len = -1;
 	const char *opptr = NULL;

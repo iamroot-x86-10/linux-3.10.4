@@ -151,7 +151,7 @@ static void vga_recalc_vertical(void)
 	crtc = vga_crtc(); //0x3d4 로 예상하고 있다.
 
 	pt = in_idx(crtc, 0x11); //verical retrace end: 
-	pt &= ~0x80;		/* Unlock CR0-7 */
+	pt &= ~0x80;		/* Unlock CR0-7 */   //7F
 	out_idx(pt, crtc, 0x11);
 
 	out_idx((u8)rows, crtc, 0x12); /* Lower height register */

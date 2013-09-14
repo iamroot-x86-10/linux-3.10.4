@@ -175,7 +175,7 @@ void main(void)
 	/* First, copy the boot header into the "zeropage" */
 	copy_boot_params();
 
-	/* Initialize the early-boot console */
+	/* Initialize the early-boot console */  
 	console_init();
 	if (cmdline_find_option_bool("debug"))
 		puts("early console in setup code\n");

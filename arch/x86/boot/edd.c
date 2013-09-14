@@ -41,7 +41,7 @@ static u32 read_mbr_sig(u8 devno, struct edd_info *ei, u32 *mbrsig)
 	int sector_size;
 	char *mbrbuf_ptr, *mbrbuf_end;
 	u32 buf_base, mbr_base;
-	extern char _end[];
+	extern char _end[];	/* local에서 extern을 사용할 경우에는 따로 변수가 할당되지 않고 원래 extern된 커널의 _end를 가리킨다.*/
 	u16 mbr_magic;
 
 	sector_size = ei->params.bytes_per_sector;
@@ -53,7 +53,7 @@ static u32 read_mbr_sig(u8 devno, struct edd_info *ei, u32 *mbrsig)
 	/* (u32)&_end 에서 '&'는 주소확장때문에 사용*/
 	buf_base = (ds() << 4) + (u32)&_end;
 	/* _end는 커널의 끝을 의미한다. */
-	mbr_base = (buf_base+sector_size-1) & ~(sector_size-1);	// 셋터사이즈로 자르는 것이다. & 0xFE00
+	mbr_base = (buf_base+sector_size-1) & ~(sector_size-1);	// 섹터사이즈로 자르는 것이다. & 0xFE00
 	mbrbuf_ptr = _end + (mbr_base-buf_base);
 	mbrbuf_end = mbrbuf_ptr + sector_size;
 
@@ -159,8 +159,10 @@ void query_edd(void)
 		}	/* on/off는 edd의 사용여부이다.*/
 		else if (!strcmp(eddarg, "off"))
 			do_edd = 0;
+			//!! do_mbr = 1;
 		else if (!strcmp(eddarg, "on"))
 			do_edd = 1;
+			//!! do_mbr = 1;
 	}
 
 	// debug 메시지가 보이지 않는다.
@@ -190,7 +192,7 @@ void query_edd(void)
 		 * information...
 		 */
 		if (!get_edd_info(devno, &ei)
-		    && boot_params.eddbuf_entries < EDDMAXNR) {
+		    && boot_params.eddbuf_entries < EDDMAXNR) {	/* EDDMAXNR == 6 */
 			memcpy(edp, &ei, sizeof ei);
 			edp++;
 			boot_params.eddbuf_entries++;
