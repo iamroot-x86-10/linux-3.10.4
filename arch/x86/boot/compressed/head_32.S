@@ -6,8 +6,6 @@
 
 /*
  *  head.S contains the 32-bit startup code.
- *
- * NOTE!!! Startup happens at absolute address 0x00001000, which is also where
  * the page directory will exist. The startup code will be overwritten by
  * the page directory. [According to comments etc elsewhere on a compressed
  * kernel it will end up at 0x1000 + 1Mb I hope so as I assume this. - AC]
@@ -116,6 +114,7 @@ preferred_addr:
 	/* 참고:OFFSET(BP_loadflags, boot_params, hdr.loadflags);
 	   => DEFILE(BP_loadflags, offsetof(struct boot_parmas, hdr.loadflags);
 	     => asm volatile("\n->" BP_loadflags " %0 " boot_params.hdr.loadflags : : "i" (boot_params.hdr.loadflags))
+	*/
 	cli
 	/* 세그먼트 레지스터 재설정 */
 	movl	$__BOOT_DS, %eax
@@ -185,14 +184,51 @@ Default CONFIG_PHYSICAL_START and CONFIG_PHYSICAL_ALIGN each to 16 MB,
 #endif
 	/* CONFIG_RELOCATABLE이 enable되어 있으면 ebx는 0x1000000단위로 align된 위치이고
 	   그렇지 않으면 0x1000000이 된다. */
-!! 2013.09.28 여기까지.
 
 	/* Target address to relocate to for decompression */
+	/* 
+	 * z_extract_offset : mkpiggy를 하고 나면 piggy.S가 나온다고한다.
+  	 * http://www.iamroot.org/xe/index.php?mid=Kernel_8_x86&listStyle=webzine&page=2&document_srl=64680
+	 * z_extract_offset은 kernel생성시에 mkpiggy라는 프로그램을 실행하면서 지정해주는 것으로 보인다.
+ 	 * 이광철님의 서버에서 piggy.S값을 봤더니 다음과 같은 값으로 지정되어 있었음
+	 * 
+		.section ".rodata.compressed","a",@progbits 
+		.globl z_input_len 
+		z_input_len = 3675669 
+		.globl z_output_len 
+		z_output_len = 8033088 
+		.globl z_extract_offset 
+		z_extract_offset = 0x431000 
+		.globl z_extract_offset_negative 
+		z_extract_offset_negative = -0x431000 
+		.globl input_data, input_data_end 
+		input_data: 
+		.incbin "arch/x86/boot/compressed/vmlinux.bin.gz" 
+		input_data_end:
+	 * 	예측하기로 z_extract_offset 이후로 compressed kernel을 복사하고,
+	 *      앞쪽에 decompressed kernel을 z_extract_offset의 앞쪽(ebx부터)에 옮겨놓는다. 
+	 * 	ebx부터 decompressed kernel의 이미지가 쓰여진다.
+ 	 */
 	addl	$z_extract_offset, %ebx
 
 	/* Set up the stack */
 	leal	boot_stack_end(%ebx), %esp
 
+/*
+ * 이전 차수 분석 자료 참고 중에 
+ * http://www.iamroot.org/xe/index.php?mid=Kernel_8_x86&listStyle=webzine&page=2&document_srl=64680
+ * <arch/x86/boot/pm.c>
+ *   protected_mode_jump(boot_params.hdr.code32_start,(u32)&boot_params + (ds() << 4)); 
+ *   인자로 code32_start(보통 1M)와 boot_params 주소를 넘겨주면서 protected_mode_jump를 호출합니다.
+ *   <arch/x86/boot/pmjump.S>에서 보호모드를 켜고 boot_params 주소를 esi에 넣고
+ *   커널로 점프해서 <arch/x86/boot/compressed/head_64.S> 로 갑니다. 
+ *  arch/x86/boot/compressed/Makefile을 확인하면 head_$(BITS)가 있는데, 여기서 head_64가 들어가는 것을 확인할 수 있음.
+ *  VMLINUX_OBJS = $(obj)/vmlinux.lds $(obj)/head_$(BITS).o $(obj)/misc.o \
+	$(obj)/string.o $(obj)/cmdline.o $(obj)/early_serial_console.o \
+	$(obj)/piggy.o
+ *   이거 보고 멘붕와서 head_64.S로 넘어갔습니다.
+ *   2013. 10. 05
+ */
 	/* Zero EFLAGS */
 	pushl	$0
 	popfl
@@ -293,6 +329,20 @@ relocated:
 
 /*
  * Stack and heap for uncompression
+ */
+/*
+ * arch/x86/include/asm/boot.h
+ * BOOT_HEAP_SIZE는 BZIP2 인 경우 0x40000
+ * 아닌 경우에는 0x8000
+ * BOOT_STACK_SIZE는 x86_64인 경우 0x4000
+ * 아닌 경우에는 0x1000
+ * http://www.cs.utah.edu/dept/old/texinfo/as/as.html#SEC74
+ * .fill repeat , size , value
+ *
+ * result, size and value are absolute expressions. This emits repeat copies of size bytes. Repeat may be zero or more. Size may be zero or more, but if it is more than 8, then it is deemed to have the value 8, compatible with other people's assemblers. The contents of each repeat bytes is taken from an 8-byte number. The highest order 4 bytes are zero. The lowest order 4 bytes are value rendered in the byte-order of an integer on the computer is assembling for. Each size bytes in a repetition is taken from the lowest order size bytes of this number. Again, this bizarre behavior is compatible with other people's assemblers.
+
+size and value are optional. If the second comma and value are absent, value is assumed zero. If the first comma and following tokens are absent, size is assumed to be 1.
+ *
  */
 	.bss
 	.balign 4
