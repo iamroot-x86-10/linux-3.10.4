@@ -33,20 +33,26 @@
 #include <asm/cpufeature.h>
 #include <asm/msr-index.h>
 
+
+/*
+ * arch/x86/boot/cpucheck.c에서 check_cpu와 유사한 역할을 한다.
+ * setup.S가 존재하지 않고 같은 역할을 하는 코드가 존재하는 것으로 보인다.
+ */
 verify_cpu:
 	pushfl				# Save caller passed flags
 	pushl	$0			# Kill any dangerous flags
 	popfl
 
+	/* boot/cpucheck.c에 has_eflags라는 code 와 유사하다. */
 	pushfl				# standard way to check for cpuid
 	popl	%eax
 	movl	%eax,%ebx
-	xorl	$0x200000,%eax
+	xorl	$0x200000,%eax		!!// eflag에 cpu id를 반전
 	pushl	%eax
 	popfl
 	pushfl
 	popl	%eax
-	cmpl	%eax,%ebx
+	cmpl	%eax,%ebx	 	!!// 다시 읽어들여서 cpu id가 존재하는지 확인 
 	jz	verify_cpu_no_longmode	# cpu has no cpuid
 
 	movl	$0x0,%eax		# See if cpuid 1 is implemented
