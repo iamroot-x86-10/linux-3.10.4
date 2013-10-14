@@ -1,9 +1,23 @@
 /*
+ * 분석자- iamroot.org x86 10차
+ * 도영주: asradad1@gmail.com
+ * 조동현: bigeyeguy@gmail.com
+ * 조유준: hogi2271@gmail.com
+ * 김택훈: kth7284@gmail.com
+ * 이광철: kclee2001@daum.net
+ * 이성훈: colso110@gmail.com
+ * 이경욱: leeku3@gmail.com
+ * 김승환: drk83@naver.com
+ * 김혜린: azahling@gmail.com
+ * 송경민: gaford@naver.com
+ * 홍  석: nuricook@gmail.com
+ */
+
+/*
  *  linux/boot/head.S
  *
  *  Copyright (C) 1991, 1992, 1993  Linus Torvalds
  */
-
 /*
  *  head.S contains the 32-bit startup code.
  *
@@ -301,7 +315,7 @@ Default CONFIG_PHYSICAL_START and CONFIG_PHYSICAL_ALIGN each to 16 MB,
 
 	/* Build Level 3 */
 	leal	pgtable + 0x1000(%ebx), %edi
-	leal	0x1007(%edi), %eax
+	leal	0x1007(%edi), %eax			!! 0x1007 + %edi => %eax
 	movl	$4, %ecx
 1:	movl	%eax, 0x00(%edi)
 	addl	$0x00001000, %eax
@@ -321,17 +335,31 @@ Default CONFIG_PHYSICAL_START and CONFIG_PHYSICAL_ALIGN each to 16 MB,
 
 	/* Enable the boot page tables */
 	leal	pgtable(%ebx), %eax
+	/* PL4의 base주소를 cr3에 저장한다.*/
 	movl	%eax, %cr3
 
 	/* Enable Long mode in EFER (Extended Feature Enable Register) */
 	movl	$MSR_EFER, %ecx
+	/* rdmsr: ecx의주소값을참조하여 msr레지스터값을 eax에 저장한다. */ 
 	rdmsr
+	/* 8번째 비트를 세팅하여 IA-32e Mode Enable 한다 */ 
 	btsl	$_EFER_LME, %eax
-	wrms
+	wrmsr
 
 	/* After gdt is loaded */
+	/* LDT를 0으로 초기화 한다. LDT를 사용하지 않는다. */
 	xorl	%eax, %eax
 	lldt	%ax
+	/*
+	   LTR:
+	   Loads the source operand into the segment selector field of the task register. 
+	   The source operand (a general-purpose register or a memory location) contains 
+	   a segment selector that points to a task state segment (TSS). 
+	   After the segment selector is loaded in the task register, the processor uses 
+	   the segment selector to locate the segment descriptor for the TSS in the global 
+	   descriptor table (GDT).
+	*/   
+	/* TS descriptor의 내용을 TSS 레지스터로 로드한다. */
 	movl    $0x20, %eax
 	ltr	%ax
 
@@ -350,6 +378,7 @@ Default CONFIG_PHYSICAL_START and CONFIG_PHYSICAL_ALIGN each to 16 MB,
 	pushl	%eax
 
 	/* Enter paged protected Mode, activating Long Mode */
+	/* movl를 이용하여 cr0를 설정하기 때문에 X86_CR0_PE를 다시 셋팅하였다 */
 	movl	$(X86_CR0_PG | X86_CR0_PE), %eax /* Enable Paging and Protected mode */
 	movl	%eax, %cr0
 
@@ -458,9 +487,10 @@ preferred_addr:
  * Copy the compressed kernel to the end of our buffer
  * where decompression in place becomes safe.
  */
+	/* 압축된 커널을 z_extract_offset + rbp 위치에 복사한다. */
 	pushq	%rsi
-	leaq	(_bss-8)(%rip), %rsi
-	leaq	(_bss-8)(%rbx), %rdi
+	leaq	(_bss-8)(%rip), %rsi	!! 압축된 커널의 위치
+	leaq	(_bss-8)(%rbx), %rdi	!! 압축된 커널을 옮길 위치
 	movq	$_bss /* - $startup_32 */, %rcx
 	shrq	$3, %rcx
 	std
