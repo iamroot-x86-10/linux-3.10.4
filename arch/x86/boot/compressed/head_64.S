@@ -48,21 +48,20 @@
 #include <asm/processor-flags.h>
 #include <asm/asm-offsets.h>
 
-!! __HEAD는 linux/init.h에 다음과 같이 정의되어 있다.  
-!! #define __HEAD		.section	".head.text","ax"
-
-!! ENTRY는 linux/linkage.h에 다음과 같이 정의되어 있다.  
-!!   #ifndef ENTRY
-!!	  #define ENTRY(name) \
-!!	  .globl name; \
-!!	  ALIGN; \			.align 4,0x90 4byte align마추고 0x90으로 padding 한다.
-!!						0x90 == nop text-section에서는 0을 넣으면 안되지...
-!!						http://kjcc2.tistory.com/1215 참고
-!! 	 name:
-!!	#endif
-
-
 	__HEAD
+	/*
+	 * __HEAD는 linux/init.h에 다음과 같이 정의되어 있다.  
+	 * !! #define __HEAD		.section	".head.text","ax"
+	 * ENTRY는 linux/linkage.h에 다음과 같이 정의되어 있다.  
+	 * #ifndef ENTRY 
+	 *	  #define ENTRY(name) \
+	 *	  .globl name; \
+	 *	  ALIGN; \			.align 4,0x90 4byte align마추고 0x90으로 padding 한다.
+	 *						0x90 == nop text-section에서는 0을 넣으면 안되지...
+	 *						http://kjcc2.tistory.com/1215 참고
+	 * 	 name:
+	 *	#endif
+	 */
 	.code32
 ENTRY(startup_32)
 	/*
@@ -72,41 +71,45 @@ ENTRY(startup_32)
 	 * all need to be under the 4G limit.
 	 */
 	cld
-	/*
-	 * Test KEEP_SEGMENTS flag to see if the bootloader is asking
-	 * us to not reload segments
-	
-	Documentation/x86/boot.txt   
-	Bit 6 (write): KEEP_SEGMENTS
-	Protocol: 2.07+
-	- If 0, reload the segment registers in the 32bit entry point.
-	- If 1, do not reload the segment registers in the 32bit entry point.
-		Assume that %cs %ds %ss %es are all set to flat segments with
-		a base of 0 (or the equivalent for their environment).
-
-	* head_32.S에서는 efi setting 하는 code가 있었는데, 이 부분에서 나오지 않고 밑에서 code32 -> code64로 변경하여 그 부분에서 setting 한다. 
-	*/
 
 	/*
 	 * Test KEEP_SEGMENTS flag to see if the bootloader is asking
 	 * us to not reload segments
 	 */
 	testb $(1<<6), BP_loadflags(%esi)  !! esi는 boot_parmas table의 위치이다. pmjump.S의 30번 라인
+	/*
+	 * Test KEEP_SEGMENTS flag to see if the bootloader is asking
+	 * us to not reload segments
+	 *
+     * Documentation/x86/boot.txt   
+	 * Bit 6 (write): KEEP_SEGMENTS
+	 * Protocol: 2.07+
+	 * - If 0, reload the segment registers in the 32bit entry point.
+	 * - If 1, do not reload the segment registers in the 32bit entry point.
+	 *	Assume that %cs %ds %ss %es are all set to flat segments with
+	 *	a base of 0 (or the equivalent for their environment).
+     *
+	 * head_32.S에서는 efi setting 하는 code가 있었는데, 이 부분에서 나오지 않고 밑에서 
+	 * code32 -> code64로 변경하여 그 부분에서 setting 한다. 
+	 */
 
 	jnz 1f 	!! KEEP_SEGMENTS가 설정되어 있으면 1로점프
-		!! 설정되어있지 않으면  세그먼트 레지스터들을 재설정한다. 		
+			!! 설정되어있지 않으면  세그먼트 레지스터들을 재설정한다. 		
 
-	/* kbuild에 의해서 BP_loadflags가 정의 된다.*/
-	/* asm_offset.c에 다음과 같은 주석이 달려였다. */
-	/*
+	/* 
+	 * kbuild에 의해서 BP_loadflags가 정의 된다.
+	 * asm_offset.c에 다음과 같은 주석이 달려였다. 
+	 *
  	 * Generate definitions needed by assembly language modules.
  	 * This code generates raw asm output which is post-processed to extract
  	 * and format the required data.
  	 */
+	
 	/* 참고:OFFSET(BP_loadflags, boot_params, hdr.loadflags);
-	   => DEFILE(BP_loadflags, offsetof(struct boot_parmas, hdr.loadflags);
-	     => asm volatile("\n->" BP_loadflags " %0 " boot_params.hdr.loadflags : : "i" (boot_params.hdr.loadflags))
-	*/
+	 *   => DEFILE(BP_loadflags, offsetof(struct boot_parmas, hdr.loadflags);
+	 *   => asm volatile("\n->" BP_loadflags " %0 " boot_params.hdr.loadflags : : "i" (boot_params.hdr.loadflags))
+	 */
+
 	cli
 	/* 세그먼트 레지스터 재설정 */
 	movl	$(__BOOT_DS), %eax
@@ -126,10 +129,10 @@ ENTRY(startup_32)
 	leal	(BP_scratch+4)(%esi), %esp  !! boot_params.scratch의 주소를 스택포인터로사용하기위해서
 										!! esp에 저장한다.
 
-	call	1f   !! 1:의 위치가 boot_params.scratch에 저장이된다.
+	call	1f   						!! 1:의 위치가 boot_params.scratch에 저장이된다.
 										!! call을 하게되면 돌아갈 위치가 스택에 저장되기 때문이다.
 
-1:	popl	%ebp 		!! ebp에는 이 위치의 주소가 저장된다.
+1:	popl	%ebp 						!! ebp에는 이 위치의 주소가 저장된다.
 
 	subl	$1b, %ebp					!! 1b는 컴파일시의 주소값,
 										!! ebp는 로드됬을 때 주소값의 delta 를 ebp에 저장한다.
@@ -487,12 +490,20 @@ preferred_addr:
  * Copy the compressed kernel to the end of our buffer
  * where decompression in place becomes safe.
  */
-	/* 압축된 커널을 z_extract_offset + rbp 위치에 복사한다. */
+	/* 
+	 * 압축된 커널을 z_extract_offset + rbp 위치에 복사한다. 
+	 * 커널의 시작부터 복사하는 것이 아니라 커널의 끝에 해당하는
+	 * bss 세션의 제외한 윗부분 부터 거꾸로 복사한다. 
+	 * arch/x86/boot/compressed/vmlinux.lds.S 여기에서 압축된 커널의
+	 * 세션 구조를 확인 할 수 있다.
+	 */
 	pushq	%rsi
-	leaq	(_bss-8)(%rip), %rsi	!! 압축된 커널의 위치
+	leaq	(_bss-8)(%rip), %rsi	!! 압축된 커널의 마지막 위치
 	leaq	(_bss-8)(%rbx), %rdi	!! 압축된 커널을 옮길 위치
-	movq	$_bss /* - $startup_32 */, %rcx
-	shrq	$3, %rcx
+	movq	$_bss /* - $startup_32 */, %rcx !! arch/x86/boot/compressed/vmlinux.lds.S에서 
+											!! start_32를 0으로 가정하고 있기 때문에 
+											!! - start_32를 주석 처리한 것같다.
+	shrq	$3, %rcx	!! 8bytes 단위로 나눴다. 즉, 8byte단위로 복사를 하겠다.
 	std
 	rep	movsq
 	cld
@@ -501,9 +512,12 @@ preferred_addr:
 /*
  * Jump to the relocated address.
  */
-	leaq	relocated(%rbx), %rax
-	jmp	*%rax
-
+	leaq	relocated(%rbx), %rax	!! rax에 reloated + rbx가 rax에 저장
+	jmp	*%rax					
+	
+	/*
+	 * 여기 부터는 복사된 커널의 코드 부분에 해당 된다.
+	 */
 	.text
 relocated:
 
@@ -513,7 +527,7 @@ relocated:
 	xorl	%eax, %eax
 	leaq    _bss(%rip), %rdi
 	leaq    _ebss(%rip), %rcx
-	subq	%rdi, %rcx
+	subq	%rdi, %rcx	
 	shrq	$3, %rcx
 	rep	stosq
 
