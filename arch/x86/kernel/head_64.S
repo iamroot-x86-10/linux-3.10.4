@@ -1,4 +1,19 @@
 /*
+ * 분석자- iamroot.org x86 10차
+ * 조동현: bigeyeguy@gmail.com
+ * 조유준: hogi2271@gmail.com
+ * 김택훈: kth7284@gmail.com
+ * 이광철: kclee2001@daum.net
+ * 이성훈: colso110@gmail.com
+ * 이경욱: leeku3@gmail.com
+ * 김승환: drk83@naver.com
+ * 김혜린: azahling@gmail.com
+ * 송경민: gaford@naver.com
+ * 홍  석: nuricook@gmail.com
+ * 도영주: asradad1@gmail.com
+ */
+
+/*
  *  linux/arch/x86_64/kernel/head.S -- start in 32bit and switch to 64bit
  *
  *  Copyright (C) 2000 Andrea Arcangeli <andrea@suse.de> SuSE

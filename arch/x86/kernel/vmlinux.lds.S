@@ -85,7 +85,7 @@ SECTIONS
         . = LOAD_OFFSET + LOAD_PHYSICAL_ADDR;
         phys_startup_32 = startup_32 - LOAD_OFFSET;
 #else
-        . = __START_KERNEL;
+        . = __START_KERNEL; /* 0xfffffff810000000 */
         phys_startup_64 = startup_64 - LOAD_OFFSET;
 #endif
 

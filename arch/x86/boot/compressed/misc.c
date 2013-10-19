@@ -1,4 +1,19 @@
 /*
+ * 분석자- iamroot.org x86 10차
+ * 조동현: bigeyeguy@gmail.com
+ * 조유준: hogi2271@gmail.com
+ * 김택훈: kth7284@gmail.com
+ * 이광철: kclee2001@daum.net
+ * 이성훈: colso110@gmail.com
+ * 이경욱: leeku3@gmail.com
+ * 김승환: drk83@naver.com
+ * 김혜린: azahling@gmail.com
+ * 송경민: gaford@naver.com
+ * 홍  석: nuricook@gmail.com
+ * 도영주: asradad1@gmail.com
+ */
+
+/*
  * misc.c
  *
  * This is a collection of several routines from gzip-1.0.3
@@ -301,6 +316,14 @@ static void parse_elf(void *output)
 
 		switch (phdr->p_type) {
 		case PT_LOAD:
+			/*
+			 * T_LOAD The array element speciﬁes a loadable segment, described by p_filesz and p_memsz.
+			 * The bytes from the ﬁle are mapped to the beginning of the memory segment. If the
+			 * segment’s memory size (p_memsz) is larger than the ﬁle size (p_filesz), the ‘‘extra’’
+			 * bytes are deﬁned to hold the value 0 and to follow the segment’s initialized area. The ﬁle
+			 * size may not be larger than the memory size. Loadable segment entries in the program
+			 * header table appear in ascending order, sorted on the p_vaddr member.
+			 */
 #ifdef CONFIG_RELOCATABLE
 			dest = output;
 			dest += (phdr->p_paddr - LOAD_PHYSICAL_ADDR);
@@ -318,6 +341,9 @@ static void parse_elf(void *output)
 	free(phdrs);
 }
 
+/*
+ * 
+ */
 asmlinkage void decompress_kernel(void *rmode, memptr heap,
 				  unsigned char *input_data,
 				  unsigned long input_len,
@@ -325,19 +351,32 @@ asmlinkage void decompress_kernel(void *rmode, memptr heap,
 {
 	real_mode = rmode;
 
+	/* 
+	 * boot loader에서 잘못 다루어 질수 있는 파라메터들을 정리하고 가겠다. 
+	 * 최신커널에 추가된 부분이다.
+	 */
 	sanitize_boot_params(real_mode);
 
+	/* VGA index register ports */
+	//	#define VGA_CRT_IC  	0x3D4	/* CRT Controller Index - color emulation */
+	//	#define VGA_CRT_IM  	0x3B4	/* CRT Controller Index - mono emulation */
 	if (real_mode->screen_info.orig_video_mode == 7) {
+		/* MDA, HGC, or VGA in monochrome mode */
 		vidmem = (char *) 0xb0000;
-		vidport = 0x3b4;
+		vidport = 0x3b4;	//vga 레지스터
 	} else {
+		/* CGA, EGA, VGA and so forth */
 		vidmem = (char *) 0xb8000;
-		vidport = 0x3d4;
+		vidport = 0x3d4;	//vga 레지스터
 	}
 
 	lines = real_mode->screen_info.orig_video_lines;
 	cols = real_mode->screen_info.orig_video_cols;
-
+	/*
+	 * print를 목적으로 video를 설정
+	 * __putstr() 참고
+	 */
+		
 	console_init();
 	debug_putstr("early console in decompress_kernel\n");
 

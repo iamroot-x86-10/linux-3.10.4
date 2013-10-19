@@ -517,6 +517,9 @@ preferred_addr:
 	
 	/*
 	 * 여기 부터는 복사된 커널의 코드 부분에 해당 된다.
+	 * 
+	 * rip  relative addressing을 사용하지 않으면 아래의 코드에서
+	 * _bss 와 같은 심볼에 접근할 수가 없다.
 	 */
 	.text
 relocated:
@@ -534,12 +537,22 @@ relocated:
 /*
  * Adjust our own GOT
  */
+	/*
+	 * 공유 라이브러리 오프셋 정보를 제 조정한다.
+	 * http://bottomupcs.sourceforge.net/csbu/x3824.htm
+	 *
+	 * 컴파일 타이밍에 GOT테이블이 만들어진다. 
+	 * 그 이후 로더에 의해서 GOT테이블을 갱신하여야 되는데
+	 * 그런 부분이 없다. 즉, GOT테이블에는 0을 기준으로 
+	 * 오프셋 정보만이 담겨있을 것이다. 그래서 절대 주소값을
+	 * 저장해야 되기 때문에 rbx값을 더해주는 작업을 한다.
+	 */
 	leaq	_got(%rip), %rdx
 	leaq	_egot(%rip), %rcx
 1:
 	cmpq	%rcx, %rdx
 	jae	2f
-	addq	%rbx, (%rdx)
+	addq	%rbx, (%rdx)	!! 
 	addq	$8, %rdx
 	jmp	1b
 2:
@@ -550,9 +563,13 @@ relocated:
 	pushq	%rsi			/* Save the real mode argument */
 	movq	%rsi, %rdi		/* real mode address */
 	leaq	boot_heap(%rip), %rsi	/* malloc area for uncompression */
-	leaq	input_data(%rip), %rdx  /* input_data */
-	movl	$z_input_len, %ecx	/* input_len */
-	movq	%rbp, %r8		/* output target address */
+	leaq	input_data(%rip), %rdx  /* input_data */ !! mkpiggy.c에 의해서 piggy.S 파일이 생성,
+													 !! piggy.S에 input_data가 선언되어 있다.
+	movl	$z_input_len, %ecx	/* input_len */		 !! 압축된 커널 크기
+	movq	%rbp, %r8		/* output target address */ !! 압축을 풀 위치
+													 !! http://kkamagui.tistory.com/811 참고하면 64-bit에서 함수호출 
+													 !! 규약을 확인할 수 있다. 
+													 !! r8레지스터는 5번째 아규먼트에 해당된다.
 	call	decompress_kernel
 	popq	%rsi
 
