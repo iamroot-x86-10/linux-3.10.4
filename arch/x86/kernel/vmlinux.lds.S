@@ -85,11 +85,16 @@ SECTIONS
         . = LOAD_OFFSET + LOAD_PHYSICAL_ADDR;
         phys_startup_32 = startup_32 - LOAD_OFFSET;
 #else
-        . = __START_KERNEL; /* 0xfffffff810000000 */
+        . = __START_KERNEL; /* 0xffffffff81000000 */
         phys_startup_64 = startup_64 - LOAD_OFFSET;
 #endif
 
 	/* Text and read-only data */
+	/* AT(ADDR(.text) - LOAD_OFFSET) => 0x1000000 실제 물리 주소값(LMA)
+	 * 코드 내부에서 사용하는 _text는=> 0xffffffff81000000 가상 물리 주소값(VMA)
+	 * 실제 커널은 0x1000000에 load되어있고, x86_64는 0xffffffff80000000 이후
+	 * 메모리 주소를 사용하므로 다음과 같이 AT() 형식을 사용한다. 
+   	 */
 	.text :  AT(ADDR(.text) - LOAD_OFFSET) {
 		_text = .;
 		/* bootstrapping code */

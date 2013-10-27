@@ -84,8 +84,16 @@ startup_64:
 	 * Compute the delta between the address I am compiled to run at and the
 	 * address I am actually running at.
 	 */
+	/*
+	 * __START_KERNEL_map : _0xffffffff80000000 
+         * __START_KERNEL     :  0xffffffff81000000 
+	 * rbp 에실행시점의 주소를 넣고 (__START_KERNEL) 
+ 	 * compile된 시점의 주소에서 - _START_KERNEL_map (= 0x1000000) 값을 rbp에서 뺀다.
+	 * rbp는 실행시점의 주소가 변경되지 않은 경우 _START_KERNEL_map 값을 갖는다.
+ 	 * 이 방법으로 실행시점의 주소와 compile된 시점의 주소값의 차이 (delta)를 구한다.
+	 */
 	leaq	_text(%rip), %rbp
-	subq	$_text - __START_KERNEL_map, %rbp
+	subq	$_text - __START_KERNEL_map, %rbp  
 
 	/* Is the address not 2M aligned? */
 	movq	%rbp, %rax
@@ -96,12 +104,35 @@ startup_64:
 	/*
 	 * Is the address too large?
 	 */
+ 	/*
+	 * MAX_PHYSMEM_BITS = 46bit 이상의 값이라면
+	 * 잘못된 주소이므로 bad_address로 리턴한다.
+	 */
 	leaq	_text(%rip), %rax
 	shrq	$MAX_PHYSMEM_BITS, %rax
 	jnz	bad_address
 
 	/*
 	 * Fixup the physical addresses in the page table
+	 */
+	/*
+	 *
+	 *  RIP-relative addressing 을 다음과 같이 가정했음
+	 *  symbol + (value)(%rip)는 (symbol+(value))(%rip)로 보고
+	 *  symbol + (value)의 위치로 이동한다. 
+	 *  
+	 *  Kernel space는 64bit의 최대값 ffffffffffffffff - 2GB
+	 *  =  ffffffff80000000 의 주소를 사용한다. 
+	 * 
+	 *  15 ffffffff80000000 - ffffffffa0000000 (=512 MB) 
+	 *	 kernel text mapping, from phys 0
+	 *  16 ffffffffa0000000 - ffffffffff5fffff (=1526 MB)
+  	 *       module mapping space
+	 *  17 ffffffffff600000 - ffffffffffdfffff (=8 MB) vsyscalls
+ 	 *  18 ffffffffffe00000 - ffffffffffffffff (=2 MB) unused hole
+	 *  위 memory map의 page table을 설정
+ 	 *
+	 *  2013. 10. 26. 
 	 */
 	addq	%rbp, early_level4_pgt + (L4_START_KERNEL*8)(%rip)
 
