@@ -92,8 +92,9 @@ startup_64:
 	 * rbp는 실행시점의 주소가 변경되지 않은 경우 _START_KERNEL_map 값을 갖는다.
  	 * 이 방법으로 실행시점의 주소와 compile된 시점의 주소값의 차이 (delta)를 구한다.
 	 */
-	leaq	_text(%rip), %rbp
-	subq	$_text - __START_KERNEL_map, %rbp  
+	leaq	_text(%rip), %rbp			/* rbp -> 0x1000000 */
+	/* 0x1000000 - (0xffffffff81000000 - 0xffffffff80000000) */
+	subq	$_text - __START_KERNEL_map, %rbp 	/* rbp -> 0 */
 
 	/* Is the address not 2M aligned? */
 	movq	%rbp, %rax
@@ -147,39 +148,40 @@ startup_64:
 	 * creates a bunch of nonsense entries but that is fine --
 	 * it avoids problems around wraparound.
 	 */
-	leaq	_text(%rip), %rdi
-	leaq	early_level4_pgt(%rip), %rbx
+	leaq	_text(%rip), %rdi		/* rdi -> 0x1000000 */
+	leaq	early_level4_pgt(%rip), %rbx    /* rbx -> early_level4_pgt를 가르킴 */
 
 	movq	%rdi, %rax
-	shrq	$PGDIR_SHIFT, %rax
+	shrq	$PGDIR_SHIFT, %rax		/* $PGDIR_SHIFT -> 39, rax -> 0 */
 
-	leaq	(4096 + _KERNPG_TABLE)(%rbx), %rdx
-	movq	%rdx, 0(%rbx,%rax,8)
-	movq	%rdx, 8(%rbx,%rax,8)
+	leaq	(4096 + _KERNPG_TABLE)(%rbx), %rdx /* dynamic_pgt[0]의 주소에 퍼미션이 더해짐 */
+						   /* rdx는 dynamic_pgt[0] 테이블의 주소와 퍼미션을 가짐 */
+	movq	%rdx, 0(%rbx,%rax,8)	/* early_level4_pgt의 첫번째 엔트리는 dynamic_pgt 처음을 가르킴  */
+	movq	%rdx, 8(%rbx,%rax,8)    /* early_level4_pgt의 두번째 엔트리도 dynamic_pgt 처음을 가르킴  */
 
-	addq	$4096, %rdx
+	addq	$4096, %rdx		/* dynamic_pgt[1]의 주소를 가짐 */
 	movq	%rdi, %rax
 	shrq	$PUD_SHIFT, %rax
-	andl	$(PTRS_PER_PUD-1), %eax
+	andl	$(PTRS_PER_PUD-1), %eax	/* eax -> 0 */
 	movq	%rdx, 4096(%rbx,%rax,8)
 	incl	%eax
-	andl	$(PTRS_PER_PUD-1), %eax
+	andl	$(PTRS_PER_PUD-1), %eax /* wraparound 기법을 의미 */
 	movq	%rdx, 4096(%rbx,%rax,8)
 
 	addq	$8192, %rbx
-	movq	%rdi, %rax
-	shrq	$PMD_SHIFT, %rdi
-	addq	$(__PAGE_KERNEL_LARGE_EXEC & ~_PAGE_GLOBAL), %rax
+	movq	%rdi, %rax		/* rax -> 0x1000000 */
+	shrq	$PMD_SHIFT, %rdi	/* rdi -> 8 */
+	addq	$(__PAGE_KERNEL_LARGE_EXEC & ~_PAGE_GLOBAL), %rax /* 퍼미션을 더해줌 */
 	leaq	(_end - 1)(%rip), %rcx
-	shrq	$PMD_SHIFT, %rcx
+	shrq	$PMD_SHIFT, %rcx	/* PMD_SHIFT -> 21 */
 	subq	%rdi, %rcx
-	incl	%ecx
+	incl	%ecx			/* 커널크기만큼 필요한 페이지프레임의 개수가 들어있다. */
 
 1:
-	andq	$(PTRS_PER_PMD - 1), %rdi
-	movq	%rax, (%rbx,%rdi,8)
+	andq	$(PTRS_PER_PMD - 1), %rdi /* PTRS_PER_PMD -> 512, 9비트만 뽑아낸다, rdi -> 8 */
+	movq	%rax, (%rbx,%rdi,8)	  /* dynamic_pgt[1]의 9번째 엔트리는 커널을 가르킴 */
 	incq	%rdi
-	addq	$PMD_SIZE, %rax
+	addq	$PMD_SIZE, %rax		  /* 2M 더해줌 */
 	decl	%ecx
 	jnz	1b
 
@@ -228,14 +230,13 @@ ENTRY(secondary_startup_64)
 	movq	%rcx, %cr4
 
 	/* Setup early boot stage 4 level pagetables. */
-	addq	phys_base(%rip), %rax
+	addq	phys_base(%rip), %rax	/* 페이지테이블 시작주소 */
 	movq	%rax, %cr3
 
 	/* Ensure I am executing from virtual addresses */
 	movq	$1f, %rax
-	jmp	*%rax
+	jmp	*%rax /* Absolute jump */
 1:
-
 	/* Check if nx is implemented */
 	movl	$0x80000001, %eax
 	cpuid
@@ -243,7 +244,7 @@ ENTRY(secondary_startup_64)
 
 	/* Setup EFER (Extended Feature Enable Register) */
 	movl	$MSR_EFER, %ecx
-	rdmsr
+	rdmsr				/* Load MSR specified by ECX into EDX:EAX */
 	btsl	$_EFER_SCE, %eax	/* Enable System Call */
 	btl	$20,%edi		/* No Execute supported? */
 	jnc     1f
@@ -288,6 +289,7 @@ ENTRY(secondary_startup_64)
 	movl %eax,%fs
 	movl %eax,%gs
 
+	/* 다음URL참조: http://studyfoss.egloos.com/5375570 */
 	/* Set up %gs.
 	 *
 	 * The base of %gs always points to the bottom of the irqstack
