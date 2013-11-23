@@ -55,6 +55,18 @@ static void __init reset_early_page_tables(void)
 }
 
 /* Create a new PMD entry */
+/*
+ * page fault early-handler 
+ *
+ * address 파라메터에는 CR2레지스트에 저장되어 있는
+ * page fault가 발생했을 때 fault address가 넘어온다.
+ *
+ * ffff880000000000 - ffffc7ffffffffff (=64 TB) direct mapping of all phys. memory 
+ * (Documentation/x86/x86_64/mm.txt참조)
+ * 위 영역에서 발생한 page fault를 처리하는 handler
+ *
+ * page fault가 발생하면 EARLY_DYNAMINC_PAGE_TABLES에 PUD, PMD를 추가한다.
+ */ 
 int __init early_make_pgtable(unsigned long address)
 {
 	unsigned long physaddr = address - __PAGE_OFFSET;
@@ -64,6 +76,7 @@ int __init early_make_pgtable(unsigned long address)
 	pmdval_t pmd, *pmd_p;
 
 	/* Invalid address or early pgt is done ?  */
+	/* CR3에는 early_level4_pgt가 저장되어 있다. */
 	if (physaddr >= MAXMEM || read_cr3() != __pa(early_level4_pgt))
 		return -1;
 
@@ -79,6 +92,11 @@ again:
 	if (pgd)
 		pud_p = (pudval_t *)((pgd & PTE_PFN_MASK) + __START_KERNEL_map - phys_base);
 	else {
+		/* 
+		 * head_64.S의 496라인에 early_daynmic_pgts는
+		 * 512*EARLY_DYNAMIC_PAGE_TABLES만큼 할당되어 있다.
+		 * 64개 이상을 할당하게 되면 초기화해서 다시 할당한다.
+		 */
 		if (next_early_pgt >= EARLY_DYNAMIC_PAGE_TABLES) {
 			reset_early_page_tables();
 			goto again;
@@ -170,6 +188,9 @@ void __init x86_64_start_kernel(char * real_mode_data)
 		set_intr_gate(i, &early_idt_handlers[i]);
 	load_idt((const struct desc_ptr *)&idt_descr);
 
+	/*
+	 * boot_params에 real_mode_date를 저장 
+	 */
 	copy_bootdata(__va(real_mode_data));
 
 	/*

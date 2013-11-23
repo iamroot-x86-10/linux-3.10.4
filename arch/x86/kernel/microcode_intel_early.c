@@ -718,6 +718,14 @@ int __init save_microcode_in_initrd(void)
 	return ret;
 }
 
+
+/*
+ * initrd에 저장되어 있는 microcode(kernel/x86/micorocde/GenuineIntel.bin)를
+ * 읽어와서 적용하는 함수이다. (Documentation/x86/early-microcode.txt 참조)
+ *
+ * bsp: bootstrap processor
+ * ap: application processor
+ */
 static void __init
 _load_ucode_intel_bsp(struct mc_saved_data *mc_saved_data,
 		      unsigned long *mc_saved_in_initrd,

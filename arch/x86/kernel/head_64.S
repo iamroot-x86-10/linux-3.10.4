@@ -417,6 +417,10 @@ ENTRY(early_idt_handler)
 
 	cmpl $14,72(%rsp)	# Page fault?
 	jnz 10f
+	/*
+	 * cr2 레지스터는 page fault가 발생했을 때 fault가 발생한 주소가
+	 * 저장된다. 
+	 */
 	GET_CR2_INTO(%rdi)	# can clobber any volatile register if pv
 	call early_make_pgtable
 	andl %eax,%eax
