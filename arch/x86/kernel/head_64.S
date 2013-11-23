@@ -91,6 +91,7 @@ startup_64:
  	 * compile된 시점의 주소에서 - _START_KERNEL_map (= 0x1000000) 값을 rbp에서 뺀다.
 	 * rbp는 실행시점의 주소가 변경되지 않은 경우 _START_KERNEL_map 값을 갖는다.
  	 * 이 방법으로 실행시점의 주소와 compile된 시점의 주소값의 차이 (delta)를 구한다.
+	 * _text - ($_text - __START_KERNEL_map) = __START_KERNEL_map + (_text - $_text)
 	 */
 	leaq	_text(%rip), %rbp			/* rbp -> 0x1000000 */
 	/* 0x1000000 - (0xffffffff81000000 - 0xffffffff80000000) */
@@ -371,6 +372,12 @@ bad_address:
 	__INIT
 	.globl early_idt_handlers
 early_idt_handlers:
+	/*
+	 * 80 ~ 104 는 interrupt handler의 return값과 다시 실행할 cs, rip,
+   	 * error code를 저장한다.
+	 * 만약, error code를 return하는 interrupt handler면 ASM_NOP2를 실행하고,
+	 * 그렇지 않으면 $0을 집어넣어서, dummy error code를 넣는다.
+	 */
 	# 104(%rsp) %rflags
 	#  96(%rsp) %cs
 	#  88(%rsp) %rip
