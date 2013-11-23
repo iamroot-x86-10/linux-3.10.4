@@ -41,11 +41,16 @@ static void __init reset_early_page_tables(void)
 {
 	unsigned long i;
 
+	/*
+	 * PGD의 511 entry 를 제외하고, 0-510까지의 entry를 제거한다.
+ 	 * 511 entry를 제외하면, kernel page 구조를 잃어버린다.
+	 */
 	for (i = 0; i < PTRS_PER_PGD-1; i++)
 		early_level4_pgt[i].pgd = 0;
 
 	next_early_pgt = 0;
-
+	
+	/* cr3에 early_levle4_ptg의 physical address을 설정한다 */
 	write_cr3(__pa(early_level4_pgt));
 }
 
