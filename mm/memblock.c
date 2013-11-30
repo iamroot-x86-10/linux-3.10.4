@@ -22,7 +22,9 @@
 
 static struct memblock_region memblock_memory_init_regions[INIT_MEMBLOCK_REGIONS] __initdata_memblock;
 static struct memblock_region memblock_reserved_init_regions[INIT_MEMBLOCK_REGIONS] __initdata_memblock;
-
+/*
+ * #define __meminitdata    __section(.meminit.data)
+ */
 struct memblock memblock __initdata_memblock = {
 	.memory.regions		= memblock_memory_init_regions,
 	.memory.cnt		= 1,	/* empty dummy entry */
@@ -55,6 +57,9 @@ memblock_type_name(struct memblock_type *type)
 /* adjust *@size so that (@base + *@size) doesn't overflow, return new size */
 static inline phys_addr_t memblock_cap_size(phys_addr_t base, phys_addr_t *size)
 {
+	/*
+	 * phtys_addr_t로 강제 형변환을 하였기 때문에 32/64bit모두사용하다.
+	 */
 	return *size = min(*size, (phys_addr_t)ULLONG_MAX - base);
 }
 

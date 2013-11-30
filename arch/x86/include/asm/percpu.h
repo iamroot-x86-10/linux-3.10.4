@@ -181,6 +181,9 @@ do {									\
 
 #define percpu_from_op(op, var, constraint)		\
 ({							\
+ 	/* 
+	 * (var) type에 해당하는 pfo_ret__변수를 만들어 준다.
+	 */
 	typeof(var) pfo_ret__;				\
 	switch (sizeof(var)) {				\
 	case 1:						\

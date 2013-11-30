@@ -482,12 +482,20 @@ asmlinkage void __init start_kernel(void)
 	debug_objects_early_init();
 
 	/*
-	 * Set up the the initial canary ASAP:
+	 * Set up the the initial canary ASAP:a
+	 * starck canary값을 current task와 irq_stack_union 에 저장해둔다.
+	 * (per-cup에 해당하는 task와 irq_stack에 저장)
 	 */
 	boot_init_stack_canary();
 
+	/*
+	 * cgroup은 시스템 상에서 동작 중인 태스크들을 임의로 그룹지어 제어할 수 있도록 도와주는 기능이다.
+	 * cgroup은 구현된 subsystem의 종류에 따라 임의의 용도로 사용될 수 있지만
+	 * 일반적으로는 시스템의 자원을 일정한 기준에 따라 분배하여 사용하도록 제어하는 용도로 사용된다.
+	 */
 	cgroup_init_early();
 
+	 /* asm{ cli } */
 	local_irq_disable();
 	early_boot_irqs_disabled = true;
 

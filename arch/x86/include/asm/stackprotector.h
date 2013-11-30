@@ -69,10 +69,19 @@ static __always_inline void boot_init_stack_canary(void)
 	 * there it already has some randomness on most systems. Later
 	 * on during the bootup the random pool has true entropy too.
 	 */
+	/*
+	 * get_random_bytes()에서 가져오는 값은 유추가능한 랜덤값을 가져오고
+	 * time stamp의 값을 가져와서
+	 * 조금더 완벽한 랜던값인 canary값을 만든다.
+	 */
 	get_random_bytes(&canary, sizeof(canary));
 	tsc = __native_read_tsc();
 	canary += tsc + (tsc << 32UL);
-
+	
+	/*
+	 * current-task와 iqr_starck_uinon에 같은carnary값을 저장해두어
+	 * 나중에 서로 비교할 것으로 예상된다.
+	 */
 	current->stack_canary = canary;
 #ifdef CONFIG_X86_64
 	this_cpu_write(irq_stack_union.stack_canary, canary);

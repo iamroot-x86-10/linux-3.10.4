@@ -841,6 +841,13 @@ static void __init trim_low_memory_range(void)
 
 void __init setup_arch(char **cmdline_p)
 {
+	/*
+	 * __bss_stop - _text: 커널 사이즈
+	 * 커널이 존재하는 구역은 reserve영역으로 지정한다.
+	 *
+	 * memblock의 reserve는 메모리를 사용해서는 안되는 역역을 명시해둔다.
+	 * 아마 뒤에 메모리를 항당할 때 여기를 참조하여 할당가능 영역을 계산할 거같다.
+	 */
 	memblock_reserve(__pa_symbol(_text),
 			 (unsigned long)__bss_stop - (unsigned long)_text);
 
