@@ -76,17 +76,30 @@ enum fixed_addresses {
 	FIX_HOLE,
 	FIX_VDSO,
 #else
+	/*
+	 * Documentaion/x86/x86_64/mm.txt에서 Vsyscalls에 해당하는
+	 * page table의 index를 설정한다.
+	 *
+	 * VSYSCALL_LAST_PAGE = 0
+	 * VSYSCALL_FIRST_PAGE = 2047 ( 0 + (8M) / 4096) - 1)
+	 * 
+	 * arch/x86/kernel/head_64.S의 line 549에 의해서서
+	 * vsyscalls와 hole을 위해 fixmap_pgt 10M를 할당해준 부분이 있다.
+	 * 그래서 level2_fixmap_pgt의 507~510까지 VSYSCALL의 페이지 테이블이
+	 * 존재한다.
+	 *
+	 */
 	VSYSCALL_LAST_PAGE,
 	VSYSCALL_FIRST_PAGE = VSYSCALL_LAST_PAGE
 			    + ((VSYSCALL_END-VSYSCALL_START) >> PAGE_SHIFT) - 1,
-	VVAR_PAGE,
-	VSYSCALL_HPET,
+	VVAR_PAGE,		//2048
+	VSYSCALL_HPET,	//2049
 #endif
 #ifdef CONFIG_PARAVIRT_CLOCK
 	PVCLOCK_FIXMAP_BEGIN,
 	PVCLOCK_FIXMAP_END = PVCLOCK_FIXMAP_BEGIN+PVCLOCK_VSYSCALL_NR_PAGES-1,
 #endif
-	FIX_DBGP_BASE,
+	FIX_DBGP_BASE,	
 	FIX_EARLYCON_MEM_BASE,
 #ifdef CONFIG_PROVIDE_OHCI1394_DMA_INIT
 	FIX_OHCI1394_BASE,
@@ -131,7 +144,7 @@ enum fixed_addresses {
 	 */
 #define NR_FIX_BTMAPS		64
 #define FIX_BTMAPS_SLOTS	4
-#define TOTAL_FIX_BTMAPS	(NR_FIX_BTMAPS * FIX_BTMAPS_SLOTS)
+#define TOTAL_FIX_BTMAPS	(NR_FIX_BTMAPS * FIX_BTMAPS_SLOTS) //256
 	FIX_BTMAP_END =
 	 (__end_of_permanent_fixed_addresses ^
 	  (__end_of_permanent_fixed_addresses + TOTAL_FIX_BTMAPS - 1)) &

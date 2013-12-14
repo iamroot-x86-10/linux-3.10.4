@@ -344,6 +344,10 @@ static pte_t bm_pte[PAGE_SIZE/sizeof(pte_t)] __page_aligned_bss;
 static inline pmd_t * __init early_ioremap_pmd(unsigned long addr)
 {
 	/* Don't assume we're using swapper_pg_dir at this point */
+	/*
+	 * read_cr3()에는 virtual address의 base address가 저장되어있다.
+	 * (PGD의 시작주소가 저장되어 있다.)
+	 */
 	pgd_t *base = __va(read_cr3());
 	pgd_t *pgd = &base[pgd_index(addr)];
 	pud_t *pud = pud_offset(pgd, addr);
@@ -371,7 +375,13 @@ void __init early_ioremap_init(void)
 
 	if (early_ioremap_debug)
 		printk(KERN_INFO "early_ioremap_init()\n");
-
+	
+	/*
+	 * FIX_BTMAPS_SLOTS = 4
+	 * __fix_to_virt() 함수는VSYSCALLS_END(ffffffffffdfffff)를 기준으로
+	 * 4096bytes로 인덱싱된 page index를 virtual address로 바꿔주는
+	 * 함수 이다.
+	 */
 	for (i = 0; i < FIX_BTMAPS_SLOTS; i++)
 		slot_virt[i] = __fix_to_virt(FIX_BTMAP_BEGIN - NR_FIX_BTMAPS*i);
 

@@ -885,11 +885,24 @@ void __init setup_arch(char **cmdline_p)
 
 	early_trap_init();
 	early_cpu_init();
+
+	/*
+	 * boot-ioremap을 위한 pmd, pte(256)개를새롭게(?) 할당하였다.
+	 * boot-ioremap이 뭐하는것인지는 아직 모르겠음
+	 *
+	 * slot_virt[] 배열을 설정(FIX_BTMAP_BEGIN ~ FIX_BTMAP_END)
+	 *
+	 */
 	early_ioremap_init();
 
 	setup_olpc_ofw_pgd();
 
+	/*
+	 * arch/x86/boot/tool/build.c에서 DEFAULT_ROOT_DEV(0:0)를 설정한다.
+	 * 그래서 아마도 ROOT_DEV는 0으로 초기화 될거 같다.
+	 */
 	ROOT_DEV = old_decode_dev(boot_params.hdr.root_dev);
+	
 	screen_info = boot_params.screen_info;
 	edid_info = boot_params.edid_info;
 #ifdef CONFIG_X86_32
@@ -902,9 +915,15 @@ void __init setup_arch(char **cmdline_p)
 	}
 #endif
 	saved_video_mode = boot_params.hdr.vid_mode;
+	/*
+	 * Documentation/x86/boot.txt에 boot로드에 따른 type번호를 
+	 * 확인 할 수 있다.
+	 */
 	bootloader_type = boot_params.hdr.type_of_loader;
 	if ((bootloader_type >> 4) == 0xe) {
-		bootloader_type &= 0xf;
+		bootloader_type &= 0xf;			// 0x4
+										// 0x15 << 4 -> 0x150
+										// booload_type = 0x154 
 		bootloader_type |= (boot_params.hdr.ext_loader_type+0x10) << 4;
 	}
 	bootloader_version  = bootloader_type & 0xf;
@@ -928,8 +947,15 @@ void __init setup_arch(char **cmdline_p)
 	if (efi_enabled(EFI_BOOT))
 		efi_memblock_x86_reserve_range();
 #endif
-
+	
+	/*
+	 * arch/x86/platform/ 폴더 아래에 x86_init을 설정해주는
+	 * 부분이 있다.
+	 *
+	 * arch/x86/kernel/x86_init.c에 default x86_init이 정의되어 있다.
+	 */
 	x86_init.oem.arch_setup();
+	// 12월 14일 분석 끝
 
 	iomem_resource.end = (1ULL << boot_cpu_data.x86_phys_bits) - 1;
 	setup_memory_map();
