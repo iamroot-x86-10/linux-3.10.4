@@ -427,7 +427,11 @@ static void __init parse_setup_data(void)
 {
 	struct setup_data *data;
 	u64 pa_data;
-
+/*
+ * arch/x86/boot/header.S LINE 418
+ * boot_params.hdr.setup_data: # 64-bit physical pointer to 
+ * 								single linked list of struct setup_data
+ */
 	pa_data = boot_params.hdr.setup_data;
 	while (pa_data) {
 		u32 data_len, map_len;
@@ -443,9 +447,19 @@ static void __init parse_setup_data(void)
 		}
 
 		switch (data->type) {
+			/*
+			 * EFI가 설정되어 있으면 128개 이상의 e820 entry를
+			 * 설정할 수 있다. 실제 bootparam에서는 max 128개의
+			 * entry만 저장한다. 
+			 * 따라서 setup_memory_map()에서 bootparam.e820_map에 대한처리를
+			 * 하고 그이상의 entry여 이 함수에서 처리한다. 
+			 */
 		case SETUP_E820_EXT:
 			parse_e820_ext(data);
 			break;
+			/*
+			 * Device Tree Binary
+			 */
 		case SETUP_DTB:
 			add_dtb(pa_data);
 			break;
@@ -929,11 +943,19 @@ void __init setup_arch(char **cmdline_p)
 	bootloader_version  = bootloader_type & 0xf;
 	bootloader_version |= boot_params.hdr.ext_loader_ver << 4;
 
+	/*
+	 * boot_params.hdr.ram_size에는 ram 사이즈 뿐만 아니라
+	 * start, prompt, doload정보가 함께 저장되어 있다.
+	 * 그러한 정보를 받아오는데 어떻게 쓰이는지는 다음에 알아보기로한다.
+	 */
 #ifdef CONFIG_BLK_DEV_RAM
 	rd_image_start = boot_params.hdr.ram_size & RAMDISK_IMAGE_START_MASK;
 	rd_prompt = ((boot_params.hdr.ram_size & RAMDISK_PROMPT_FLAG) != 0);
 	rd_doload = ((boot_params.hdr.ram_size & RAMDISK_LOAD_FLAG) != 0);
 #endif
+	/*
+	 * EFI 그래픽등을 지원하는 발전된 CMOS/BIOS
+	 */
 #ifdef CONFIG_EFI
 	if (!strncmp((char *)&boot_params.efi_info.efi_loader_signature,
 		     "EL32", 4)) {
@@ -944,7 +966,11 @@ void __init setup_arch(char **cmdline_p)
 		set_bit(EFI_64BIT, &x86_efi_facility);
 	}
 
-	if (efi_enabled(EFI_BOOT))
+	/*
+	 * efi 사용하면 efi를 위한 메모리 영역을
+	 * reserve해준다.
+	 */
+	if (efi_enabled(EFI_BOOT)) 
 		efi_memblock_x86_reserve_range();
 #endif
 	
@@ -958,7 +984,16 @@ void __init setup_arch(char **cmdline_p)
 	// 12월 14일 분석 끝
 
 	iomem_resource.end = (1ULL << boot_cpu_data.x86_phys_bits) - 1;
+	/*
+	 * BIOS에서 가저온 physical memory 정보를 바탕으로
+	 * 메모리 멥을 setup()한다. e820, e820_saved에 저장된다.
+	 */
 	setup_memory_map();
+
+	/*
+	 * bootparam으로부터 SETUP_E820_EXT, SETUP_DTB에 대한 정보를
+	 * 설정한다. 
+	 */
 	parse_setup_data();
 	/* update the e820_saved too */
 	e820_reserve_setup_data();

@@ -268,6 +268,7 @@ int __init sanitize_e820_map(struct e820entry *biosmap, int max_nr_map,
 	int i;
 
 	/* if there's only one memory region, don't bother */
+	/* 1개일 때는 순서 재정렬 의미가 없다. */
 	if (*pnr_map < 2)
 		return -1;
 
@@ -276,6 +277,7 @@ int __init sanitize_e820_map(struct e820entry *biosmap, int max_nr_map,
 
 	/* bail out if we find any unreasonable addresses in bios map */
 	for (i = 0; i < old_nr; i++)
+		/* overflow 검사*/
 		if (biosmap[i].addr + biosmap[i].size < biosmap[i].addr)
 			return -1;
 
@@ -1028,13 +1030,31 @@ char *__init default_machine_specific_memory_setup(void)
 	 * Otherwise fake a memory map; one section from 0k->640k,
 	 * the next section from 1mb->appropriate_mem_k
 	 */
+	/*
+	 * arch/x86/boot/memory.c에서 detect_memory_e820()함수에서
+	 * boot_parmams에 메모리관련 정보를 저정하여 주었다.
+	 * head_64.S에서 arch/x86/boot/main.c의 main()함수를 호출할 때
+	 * 저장하는 로직으로 들어가게된다.
+	 */
 	new_nr = boot_params.e820_entries;
+	/*
+	 * arch/x86/kernel/e820.c 172 라인 부터 설명을 참고하자
+	 */
 	sanitize_e820_map(boot_params.e820_map,
 			ARRAY_SIZE(boot_params.e820_map),
 			&new_nr);
 	boot_params.e820_entries = new_nr;
+	/*
+	 * arch/x86/kernel/e820.c에 struct e820map e820;에
+	 * sanitize된 e820 map 정보를 옮겨둔다.
+	 * boot_params 메모리영역은 이후 사라질수 있기 때문에
+	 * 안전한 곳에 저장해두는 의미 같다. 
+	 */
 	if (append_e820_map(boot_params.e820_map, boot_params.e820_entries)
 	  < 0) {
+		/*
+		 * e820_entires가 1개 이하일 때 또는 overflow가 발생했을 때
+		 */
 		u64 mem_size;
 
 		/* compare results from other methods and take the greater */
@@ -1059,7 +1079,18 @@ char *__init default_machine_specific_memory_setup(void)
 void __init setup_memory_map(void)
 {
 	char *who;
-
+	
+	/*
+	 * system 메모리 정보는 
+	 * /sys/firmware/memmap/0~ 디렉터리에 start, end, type으로 확인할 수 있다.
+	 * 이 정보는 BIOS로부터 가저온 정보이다. 
+	 * 또한 dmesg를 확인하면 다음과 같은 화면을 확인할 수 있다.
+	 *
+	 * [    0.000000] BIOS-provided physical RAM map:
+	 * [    0.000000]  BIOS-e820: 0000000000000000 - 000000000009f800 (usable)
+	 * [    0.000000]  BIOS-e820: 000000000009f800 - 00000000000a0000 (reserved)
+	 * [    0.000000]  BIOS-e820: 00000000000dc000 - 0000000000100000 (reserved)
+	 */ 
 	who = x86_init.resources.memory_setup();
 	memcpy(&e820_saved, &e820, sizeof(struct e820map));
 	printk(KERN_INFO "e820: BIOS-provided physical RAM map:\n");
