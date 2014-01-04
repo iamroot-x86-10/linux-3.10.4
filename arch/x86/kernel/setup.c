@@ -427,18 +427,31 @@ static void __init parse_setup_data(void)
 {
 	struct setup_data *data;
 	u64 pa_data;
-/*
- * arch/x86/boot/header.S LINE 418
- * boot_params.hdr.setup_data: # 64-bit physical pointer to 
- * 								single linked list of struct setup_data
- */
+	/*
+	 * arch/x86/boot/header.S LINE 418
+	 * boot_params.hdr.setup_data: # 64-bit physical pointer to 
+ 	 * 								single linked list of struct setup_data
+ 	 */
 	pa_data = boot_params.hdr.setup_data;
 	while (pa_data) {
 		u32 data_len, map_len;
 
+		/*  PAGE_SIZE - (pa_data & ((PAGE_SIZE-1)) */
+		/*  1 0000 0000 0000 - (pa_data & (0000 1111 1111 1111) */
+		/*  1 0000 0000 0000 - (pa_data */
 		map_len = max(PAGE_SIZE - (pa_data & ~PAGE_MASK),
 			      (u64)sizeof(struct setup_data));
+		
+		/*
+		 * pa_data는 physical memory 영역이므로 
+		 * fix_bitmap에 페이지 테이블을 작성해두었다. 
+		 * data는 pa_data의 virtual address이다.
+		 */
 		data = early_memremap(pa_data, map_len);
+
+		/*
+		 * data가 NULL로 리턴되면???
+		 */
 		data_len = data->len + sizeof(struct setup_data);
 		if (data_len > map_len) {
 			early_iounmap(data, map_len);
@@ -904,6 +917,9 @@ void __init setup_arch(char **cmdline_p)
 	 * boot-ioremap을 위한 pmd, pte(256)개를새롭게(?) 할당하였다.
 	 * boot-ioremap이 뭐하는것인지는 아직 모르겠음
 	 *
+	 * 256 temporary boot-time mappings, used by early_ioremap(),
+	 * before ioremap() is functional.
+	 *
 	 * slot_virt[] 배열을 설정(FIX_BTMAP_BEGIN ~ FIX_BTMAP_END)
 	 *
 	 */
@@ -984,6 +1000,7 @@ void __init setup_arch(char **cmdline_p)
 	// 12월 14일 분석 끝
 
 	iomem_resource.end = (1ULL << boot_cpu_data.x86_phys_bits) - 1;
+	
 	/*
 	 * BIOS에서 가저온 physical memory 정보를 바탕으로
 	 * 메모리 멥을 setup()한다. e820, e820_saved에 저장된다.
@@ -995,6 +1012,7 @@ void __init setup_arch(char **cmdline_p)
 	 * 설정한다. 
 	 */
 	parse_setup_data();
+
 	/* update the e820_saved too */
 	e820_reserve_setup_data();
 

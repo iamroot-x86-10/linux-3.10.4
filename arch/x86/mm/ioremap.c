@@ -339,6 +339,9 @@ static int __init early_ioremap_debug_setup(char *str)
 early_param("early_ioremap_debug", early_ioremap_debug_setup);
 
 static __initdata int after_paging_init;
+/*
+ * FIX_BTMAP의256개의 PTE가 저장되어 있는 배열이다.
+ */
 static pte_t bm_pte[PAGE_SIZE/sizeof(pte_t)] __page_aligned_bss;
 
 static inline pmd_t * __init early_ioremap_pmd(unsigned long addr)
@@ -387,6 +390,10 @@ void __init early_ioremap_init(void)
 
 	pmd = early_ioremap_pmd(fix_to_virt(FIX_BTMAP_BEGIN));
 	memset(bm_pte, 0, sizeof(bm_pte));
+
+	/*
+	 * pmd에bm_pte를 달아놓는거다.
+	 */ 
 	pmd_populate_kernel(&init_mm, pmd, bm_pte);
 
 	/*
@@ -433,6 +440,9 @@ static void __init __early_set_fixmap(enum fixed_addresses idx,
 		set_pte(pte, pfn_pte(phys >> PAGE_SHIFT, flags));
 	else
 		pte_clear(&init_mm, addr, pte);
+	/*
+	 * 새로운 pte가 설정되었으므로 TLB를 flush해준다.
+	 */
 	__flush_tlb_one(addr);
 }
 
@@ -536,8 +546,21 @@ __early_ioremap(resource_size_t phys_addr, unsigned long size, pgprot_t prot)
 	 */
 	offset = phys_addr & ~PAGE_MASK;
 	phys_addr &= PAGE_MASK;
+	
+	/*
+	 *	#define __ALIGN_KERNEL(x, a)		__ALIGN_KERNEL_MASK(x, (typeof(x))(a) - 1)
+	 *	#define __ALIGN_KERNEL_MASK(x, mask)	(((x) + (mask)) & ~(mask))
+	 *
+	 * ALIGN(last_addr+1, 4096)
+	 * _ALIGN_KERNEL_MASK(last_addr+1, (typeof(last_addr+1))(4096) -1)
+	 * last_addr+1 + (u64)(4096)-1) & ~(4096-1))
+	 *
+	 * ex)  4095 / 4096 = 0
+	 *  (4095 + 4095) / 4096 = 1
+	 */
 	size = PAGE_ALIGN(last_addr + 1) - phys_addr;
 
+	//nrpages = size >> PAGE_SHIFT;
 	/*
 	 * Mappings have to fit in the FIX_BTMAP area.
 	 */
@@ -552,6 +575,11 @@ __early_ioremap(resource_size_t phys_addr, unsigned long size, pgprot_t prot)
 	 */
 	idx0 = FIX_BTMAP_BEGIN - NR_FIX_BTMAPS*slot;
 	idx = idx0;
+	
+	/*
+	 * 사용하기위한 address에 해당하는 fix_bitmap의
+	 * 페이지 테이블을 작성한다.
+	 */ 
 	while (nrpages > 0) {
 		early_set_fixmap(idx, phys_addr, prot);
 		phys_addr += PAGE_SIZE;
@@ -625,6 +653,10 @@ void __init early_iounmap(void __iomem *addr, unsigned long size)
 
 	idx = FIX_BTMAP_BEGIN - NR_FIX_BTMAPS*slot;
 	while (nrpages > 0) {
+		/*
+		 * 해당 pte를 0으로 설정함으로써
+		 * clear 효과가 발생한다.
+		 */
 		early_clear_fixmap(idx);
 		--idx;
 		--nrpages;

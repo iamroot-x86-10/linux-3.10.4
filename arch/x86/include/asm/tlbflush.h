@@ -47,6 +47,11 @@ static inline void __native_flush_tlb_global(void)
 	raw_local_irq_restore(flags);
 }
 
+/*
+ * 새로운 page entry 가 추가되었으니 
+ * TLB를 flush하라는 명령
+ * 인텔 메뉴얼 vol.2참고하세요.
+ */
 static inline void __native_flush_tlb_single(unsigned long addr)
 {
 	asm volatile("invlpg (%0)" ::"r" (addr) : "memory");
