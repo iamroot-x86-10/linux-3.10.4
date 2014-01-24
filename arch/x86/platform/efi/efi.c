@@ -722,9 +722,18 @@ void __init efi_init(void)
 			  ((__u64)boot_params.efi_info.efi_systab_hi<<32));
 #endif
 
+	/* 
+	 * efi_systab_init()을 통해 efi_phys.systab을 가상메모리에 올린후에,
+	 * efi.systab에 내용을 모두 복사 하고 return한다.
+	 * efi.systab = &efi_systab;
+	 */
 	if (efi_systab_init(efi_phys.systab))
 		return;
 
+	/*
+	 * efi system table 세팅이 완료되었으니,
+	 * 앞으로 efi system table을 사용하겠다.
+	 */
 	set_bit(EFI_SYSTEM_TABLES, &x86_efi_facility);
 
 	/*
@@ -753,14 +762,23 @@ void __init efi_init(void)
 	 * that doesn't match the kernel 32/64-bit mode.
 	 */
 
+	/*
+	 * EFI = 64 BIT && kernel == 64 BIT이 아닌가?
+	 */
 	if (!efi_is_native())
 		pr_info("No EFI runtime due to 32/64-bit mismatch with kernel\n");
+	/*
+	 * efi == 64bit && kernel == 64bit.
+	 */
 	else {
 		if (disable_runtime || efi_runtime_init())
 			return;
 		set_bit(EFI_RUNTIME_SERVICES, &x86_efi_facility);
 	}
 
+	/*
+	 * efi를 통해 받을 수 있는 데이터를 e820.map에 추가한다.
+	 */
 	if (efi_memmap_init())
 		return;
 

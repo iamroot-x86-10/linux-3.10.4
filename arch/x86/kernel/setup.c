@@ -1057,6 +1057,10 @@ void __init setup_arch(char **cmdline_p)
 	 */
 	x86_configure_nx();
 
+
+	/*
+	 * __init과 관련된 setup 함수들이 parse_early_param()에서 동작한다.
+	 * */
 	parse_early_param();
 
 	x86_report_nx();
@@ -1064,22 +1068,38 @@ void __init setup_arch(char **cmdline_p)
 	/* after early param, so could get panic from serial */
 	memblock_x86_reserve_range_setup_data();
 
+	/*
+	 * acpi 기능이 제공되며 커널이 사용할 수 있는 상황일 때,
+	 * acpi_mps_check()는 0을 리턴한다.
+	 */
 	if (acpi_mps_check()) {
 #ifdef CONFIG_X86_LOCAL_APIC
 		disable_apic = 1;
 #endif
+		/*
+		 * boot_cpu_data->x86_capability --> X86_FEATURE_APIC를 세팅
+		 * cpu_caps_cleared --> X86_FEATURE_APIC를 세팅
+		 */
 		setup_clear_cpu_cap(X86_FEATURE_APIC);
 	}
 
 #ifdef CONFIG_PCI
+	/*
+	 * kernel command line에 'earlydump'가 들어있을 경우, pci_early_dump_regs = 1이 세팅
+	 */
 	if (pci_early_dump_regs)
 		early_dump_pci_devices();
 #endif
 
+	/*
+	 * parse_early_param()에서 e820관련 __init 함수가 동작하고, userdef == 1로 세팅되어,
+	 * finish_e820_parsing()에서 다시한번 sanitize_e820_map()을 진행한다.
+	 */
 	finish_e820_parsing();
 
 	if (efi_enabled(EFI_BOOT))
 		efi_init();
+	/* 2014.01.18 스터디 완료 */
 
 	dmi_scan_machine();
 	dmi_set_dump_stack_arch_desc();

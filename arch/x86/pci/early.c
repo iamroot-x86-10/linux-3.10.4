@@ -7,6 +7,9 @@
 /* Direct PCI access. This is used for PCI accesses in early boot before
    the PCI subsystem works. */
 
+/*
+ * offset == >#define PCI_CLASS_REVISION	0x08
+ */
 u32 read_pci_config(u8 bus, u8 slot, u8 func, u8 offset)
 {
 	u32 v;
@@ -52,6 +55,7 @@ void write_pci_config_16(u8 bus, u8 slot, u8 func, u8 offset, u16 val)
 
 int early_pci_allowed(void)
 {
+	//unsigned int pci_probe = PCI_PROBE_BIOS | PCI_PROBE_CONF1 | PCI_PROBE_CONF2 |
 	return (pci_probe & (PCI_PROBE_CONF1|PCI_PROBE_NOEARLY)) ==
 			PCI_PROBE_CONF1;
 }
@@ -62,6 +66,9 @@ void early_dump_pci_device(u8 bus, u8 slot, u8 func)
 	int j;
 	u32 val;
 
+	/*
+	 * http://wiki.osdev.org/PCI
+	 */
 	printk(KERN_INFO "pci 0000:%02x:%02x.%d config space:",
 	       bus, slot, func);
 
@@ -91,6 +98,7 @@ void early_dump_pci_devices(void)
 				u32 class;
 				u8 type;
 
+				//#define PCI_CLASS_REVISION	0x08	/* High 24 bits are class, low 8 revision */
 				class = read_pci_config(bus, slot, func,
 							PCI_CLASS_REVISION);
 				if (class == 0xffffffff)
