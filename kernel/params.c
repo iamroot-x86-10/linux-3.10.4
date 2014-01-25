@@ -176,7 +176,9 @@ static char *next_arg(char *args, char **param, char **val)
 	return skip_spaces(next);
 }
 
-/* Args looks like "foo=bar,bar2 baz=fuz wiz". */
+/* Args looks like "foo=bar,bar2 baz=fuz wiz". 
+ * "early options", cmdline, NULL, 0, 0, 0, do_early_param
+ */
 int parse_args(const char *doing,
 	       char *args,
 	       const struct kernel_param *params,
@@ -198,6 +200,9 @@ int parse_args(const char *doing,
 		int irq_was_disabled;
 
 		args = next_arg(args, &param, &val);
+		/*
+		 * irq가 disabled되었는지 확인한다. 
+		 */
 		irq_was_disabled = irqs_disabled();
 		ret = parse_one(param, val, doing, params, num,
 				min_level, max_level, unknown);

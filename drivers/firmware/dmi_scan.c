@@ -92,6 +92,29 @@ static void dmi_table(u8 *buf, int len, int num,
 		 *  table in dmi_decode or dmi_string
 		 */
 		data += dm->length;
+		/*
+		 * data[0]: type
+		 * data[1]: length
+		 */
+		 /*
+		    db 0 ; Indicates BIOS Structure Type            |
+			db 13h ; Length of information in bytes         | HEADER
+			dw ? ; Reserved for handle                      |
+
+			db 01h ; String 1 is the Vendor Name            |
+			db 02h ; String 2 is the BIOS version           |
+			dw 0E800h ; BIOS Starting Address               |
+			db 03h ; String 3 is the BIOS Build Date        | DATA
+			db 1 ; Size of BIOS ROM is 128K (64K * (1 + 1)) |
+			dq BIOS_Char ; BIOS Characteristics             |
+			db 0 ; BIOS Characteristics Extension Byte 1    |
+
+			db ‘System BIOS Vendor Name’,0 ;                |
+			db ‘4.04’,0 ;                                   | STRINGS
+			db ‘00/00/0000’,0 ;                             |
+
+			db 0 ; End of structure
+		*/
 		while ((data - buf < len - 1) && (data[0] || data[1]))
 			data++;
 		if (data - buf < len - 1)
@@ -400,6 +423,10 @@ static void __init dmi_format_ids(char *buf, size_t len)
 	int c = 0;
 	const char *board;	/* Board Name is optional */
 
+/*
+ * example)
+ * [    0.000000] DMI: innotek GmbH VirtualBox/VirtualBox, BIOS VirtualBox 12/01/2006
+ */
 	c += print_filtered(buf + c, len - c,
 			    dmi_get_system_info(DMI_SYS_VENDOR));
 	c += scnprintf(buf + c, len - c, " ");
@@ -423,6 +450,24 @@ static int __init dmi_present(const u8 *buf)
 {
 	int smbios_ver;
 
+	/*
+	 *struct SMBIOSEntryPoint {
+	 *	char EntryPointString[4];    //This is _SM_
+	 *	uchar Checksum;              //This value summed with all the values of the table, should be 0 (overflow)
+	 *	uchar Length;                //Length of the Entry Point Table. Since version 2.1 of SMBIOS, this is 0x1F
+	 *	uchar MajorVersion;          //Major Version of SMBIOS
+	 *	uchar MinorVersion;          //Minor Version of SMBIOS
+	 *	ushort MaxStructureSize;     //Maximum size of a SMBIOS Structure (we will se later)
+	 *	uchar EntryPointRevision;    //...
+	 *	char FormattedArea[5];       //...
+	 *	char EntryPointString2[5];   //This is _DMI_
+	 *	uchar Checksum2;             //Checksum for values from EntryPointString2 to the end of table
+	 *	ushort TableLength;          //Length of the Table containing all the structures
+	 *	uint TableAddress;	         //Address of the Table
+	 *	ushort NumberOfStructures;   //Number of structures in the table
+	 *	uchar BCDRevision;           //Unused
+	 * };
+     */
 	if (memcmp(buf, "_SM_", 4) == 0 &&
 	    buf[5] < 32 && dmi_checksum(buf, buf[5])) {
 		smbios_ver = (buf[6] << 8) + buf[7];
@@ -451,7 +496,12 @@ static int __init dmi_present(const u8 *buf)
 		dmi_len = (buf[7] << 8) | buf[6];
 		dmi_base = (buf[11] << 24) | (buf[10] << 16) |
 			(buf[9] << 8) | buf[8];
-
+		
+		/*
+		 * include/linux/dmi.h에 128개로 dmi(smbios) type이
+		 * 정의되어 있다.
+		 * enum dmi_entry_type{};
+		 */
 		if (dmi_walk_early(dmi_decode) == 0) {
 			if (smbios_ver) {
 				dmi_ver = smbios_ver;
@@ -474,16 +524,34 @@ static int __init dmi_present(const u8 *buf)
 
 void __init dmi_scan_machine(void)
 {
+	/*
+	 * __iomem에 대해서는 다음 페이지를 참고한다.
+	 * http://studyfoss.egloos.com/5375570
+	 * __CHECK__는 커널 소스 정적 분석 도구인 sparse에서 내부적으로 정의하는 매크로이다.
+	 * 그래서 일반적으로는 __iomem은 의미가 없다. 
+	 */
 	char __iomem *p, *q;
 	char buf[32];
 
+	/*
+	 * x86_efi_facility에 EFI_CONFIG_TABLES가 셋팅되어 있는지 확인
+	 * (셋팅되어 있을것이다.)
+	 */
 	if (efi_enabled(EFI_CONFIG_TABLES)) {
+		/*
+		 * efi.smbios는 EFI_INVALID_TABLE_ADDR로 초기화된다.
+		 * 따라서, EFI가 enabled되었는데도 smbios값이 변경되지
+		 * 않았으면 error로 처리한다.
+		 */
 		if (efi.smbios == EFI_INVALID_TABLE_ADDR)
 			goto error;
 
 		/* This is called as a core_initcall() because it isn't
 		 * needed during early boot.  This also means we can
 		 * iounmap the space when we're done with it.
+		 */
+		/*
+		 * buf에 efi.smbios의 정보를 복사한다.
 		 */
 		p = dmi_ioremap(efi.smbios, 32);
 		if (p == NULL)

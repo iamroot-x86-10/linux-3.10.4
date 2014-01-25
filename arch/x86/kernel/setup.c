@@ -477,13 +477,19 @@ static void __init parse_setup_data(void)
 			add_dtb(pa_data);
 			break;
 		default:
+			/*
+			 * PCI와관련된 map정보는 E820에 포함되었다고 판단된다. 
+			 */
 			break;
 		}
 		pa_data = data->next;
 		early_iounmap(data, map_len);
 	}
 }
-
+/*
+ * setup_data list의 메모리 위치리를
+ * 커널이 사용하는 영역이라 표시하는 함수
+ */
 static void __init e820_reserve_setup_data(void)
 {
 	struct setup_data *data;
@@ -494,6 +500,9 @@ static void __init e820_reserve_setup_data(void)
 	while (pa_data) {
 		data = early_memremap(pa_data, sizeof(*data));
 		e820_update_range(pa_data, sizeof(*data)+data->len,
+				/*
+				 * 커널에서만 사용하도록 예약한다. 
+				 */
 			 E820_RAM, E820_RESERVED_KERN);
 		found = 1;
 		pa_data = data->next;
@@ -1015,16 +1024,57 @@ void __init setup_arch(char **cmdline_p)
 
 	/* update the e820_saved too */
 	e820_reserve_setup_data();
-
+	
 	copy_edd();
-
-	if (!boot_params.hdr.root_flags)
+	
+ /* 
+  * 01F2/2	ALL	root_flags	If set, the root is mounted readonly
+  * use the "ro" or "rw" options on the comand line insted.
+  *
+  * boot_parmas.hdr.root_flags가 0일 때는 아마도 부트파람에서 "rw"
+  * 가 들어온것으로 예상된다.
+  */
+	if (!boot_params.hdr.root_flags) /* root_flgs가 없으면*/
 		root_mountflags &= ~MS_RDONLY;
 	init_mm.start_code = (unsigned long) _text;
 	init_mm.end_code = (unsigned long) _etext;
 	init_mm.end_data = (unsigned long) _edata;
+	
+	/* 64k alignment slob space */
+	/* malloc 과 brk와의 관계
+	 * 참고답변 1.
+	 *
+	 * brk 시스템콜은 단지 프로세스의 데이터 세그먼트의 영역을 넓혀주는 
+	 * 일만 하는 것입니다. malloc 은 C-library에 있는 것이며, 데이터 
+	 * 세그먼트의 남는 영역을 잘 활용하여 heap용도로 사용하는 것일 뿐이고, 
+	 * 모자랄 경우 데이터 세그먼트를 늘여달라고 커널에 요청하는 것 뿐입니다.
+	 *
+	 * 즉, 커널 모드에서는 데이터 세그먼트의 증가를 요청 받을 뿐이지, 
+	 * 그 늘어난 양이 반드시 새로운 메모리 할당을 위해 사용되리라는 보장이 없습니다.
+	 *
+	 * 커널에서 malloc을 찾는 것이 혹시 디버깅을 하려는 것에서라면,
+	 * LD_PRELOAD를 통해서 malloc 함수가 들어 있는 shared object를 c library보다 
+	 * 먼저 읽게 하여 malloc 함수를 override 하는 것이 좋습니다.
+	 *
+	 * 참고답변 2.
+	 * malloc(), calloc(), free() 함수는 C library에 있는 메모리 관리 함수입니다. 
+	 * C library의 메모리 관리자는 brk() 시스템 콜을 이용하여 heap이라는 영역을 
+	 * 할당받은 후 이 영역을 자신이 직접 관리합니다. 그 영역 안에서 malloc() 같은 
+	 * 메모리 할당 요구를 처리합니다. 처음에 어느정도 크기를 미리 heap 용도로 
+	 * 받아두었다가 나중에 메모리가 더 필요하게 되는 경우에만 brk()를 호출하여 
+	 * heap 영역을 키우게 됩니다. brk()는 heap 영역을 줄이는 용도로도 사용할 수 있지만 
+	 * 보통의 C library는 일단 할당받은 heap 영역을 줄이지 않습니다. 
+	 * malloc() 함수가 불렸다고 바로 brk() 시스템 콜이 불리는 것은 아닙니다.
+	 *
+	 */
 	init_mm.brk = _brk_end;
-
+	
+	/*
+	 * __pa_symbol(_text) = __phys_addr_symbol(__phys_reloc_hide((unsigned long)(_text)))
+	 * => __phys_addr_symbol((unsigned long)(_text))
+	 * => ((unsigned long)(_text) - __START_KERNEL_map + phys_base)
+	 * => (unsigned long)(_text) - 0xffffffff80000000UL + phys_base)
+	 */
 	code_resource.start = __pa_symbol(_text);
 	code_resource.end = __pa_symbol(_etext)-1;
 	data_resource.start = __pa_symbol(_etext);
@@ -1067,7 +1117,7 @@ void __init setup_arch(char **cmdline_p)
 
 	/* after early param, so could get panic from serial */
 	memblock_x86_reserve_range_setup_data();
-
+	/* 2014.01.11일 분석 끝*/
 	/*
 	 * acpi 기능이 제공되며 커널이 사용할 수 있는 상황일 때,
 	 * acpi_mps_check()는 0을 리턴한다.
@@ -1101,6 +1151,13 @@ void __init setup_arch(char **cmdline_p)
 		efi_init();
 	/* 2014.01.18 스터디 완료 */
 
+	/*
+	 * DMI: Direct Media Interface
+	 *  2004년 이후의 모든 인텔 칩셋들은 
+	 *  이 인터페이스를 사용한다. 
+	 *  ICH6이후 DMI 인터페이스라고 불려왔지만 인텔은 
+	 *  특정한 디바이스들만의 조합만 지원한다
+	 */
 	dmi_scan_machine();
 	dmi_set_dump_stack_arch_desc();
 

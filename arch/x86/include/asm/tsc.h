@@ -27,6 +27,9 @@ static inline cycles_t get_cycles(void)
 	if (!cpu_has_tsc)
 		return 0;
 #endif
+	/*
+	 * 부팅후 지금까지의 시간을 구한다.
+	 */ 
 	rdtscll(ret);
 
 	return ret;

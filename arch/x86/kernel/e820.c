@@ -443,7 +443,7 @@ static u64 __init __e820_update_range(struct e820map *e820x, u64 start,
 		struct e820entry *ei = &e820x->map[i];
 		u64 final_start, final_end;
 		u64 ei_end;
-
+	
 		if (ei->type != old_type)
 			continue;
 

@@ -392,6 +392,11 @@ static noinline void __init_refok rest_init(void)
 /* Check for early params. */
 static int __init do_early_param(char *param, char *val, const char *unused)
 {
+	/*
+	 * include/linux/init.h의 __setup(str, fn)에 의해서 init.setup섹션에 
+	 * obs_kernel_param정보를 등록할 수 있다.
+	 * __setup_start는 시작점이다.
+	 */
 	const struct obs_kernel_param *p;
 
 	for (p = __setup_start; p < __setup_end; p++) {
