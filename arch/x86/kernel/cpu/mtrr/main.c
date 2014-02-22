@@ -590,6 +590,9 @@ int __initdata changed_by_mtrr_cleanup;
  * initialized (i.e. before smp_init()).
  *
  */
+ /*
+  *	
+  * /
 void __init mtrr_bp_init(void)
 {
 	u32 phys_addr;

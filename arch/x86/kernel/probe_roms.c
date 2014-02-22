@@ -191,7 +191,7 @@ static int __init romchecksum(const unsigned char *rom, unsigned long length)
 	unsigned char sum, c;
 
 	for (sum = 0; length && probe_kernel_address(rom++, c) == 0; length--)
-		sum += c;
+	sum += c;
 	return !length && !sum;
 }
 
