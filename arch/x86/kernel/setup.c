@@ -1248,6 +1248,7 @@ void __init setup_arch(char **cmdline_p)
 	max_pfn = e820_end_of_ram_pfn();
 
 	/* update e820 for memory not covered by WB MTRRs */
+	/* MTRR을 초기화 한다. */
 	mtrr_bp_init();
 	if (mtrr_trim_uncached_memory(max_pfn))
 		max_pfn = e820_end_of_ram_pfn();

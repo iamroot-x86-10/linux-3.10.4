@@ -86,7 +86,7 @@ startup_64:
 	 */
 	/*
 	 * __START_KERNEL_map : _0xffffffff80000000 
-         * __START_KERNEL     :  0xffffffff81000000 
+     * __START_KERNEL     :  0xffffffff81000000 
 	 * rbp 에실행시점의 주소를 넣고 (__START_KERNEL) 
  	 * compile된 시점의 주소에서 - _START_KERNEL_map (= 0x1000000) 값을 rbp에서 뺀다.
 	 * rbp는 실행시점의 주소가 변경되지 않은 경우 _START_KERNEL_map 값을 갖는다.

@@ -590,9 +590,25 @@ int __initdata changed_by_mtrr_cleanup;
  * initialized (i.e. before smp_init()).
  *
  */
- /*
-  *	
-  * /
+
+/*
+ * Documentation :: kernel-10-x86/linux-3.10.4/Documentation/x86/mtrr.txt 
+ *
+	On Intel P6 family processors (Pentium Pro, Pentium II and later)
+	the Memory Type Range Registers (MTRRs) may be used to control
+	processor access to memory ranges. This is most useful when you have
+	a video (VGA) card on a PCI or AGP bus. Enabling write-combining
+	allows bus write transfers to be combined into a larger transfer
+	before bursting over the PCI/AGP bus. This can increase performance
+	of image write operations 2.5 times or more.
+*/
+
+/*
+ * bp -> base processor
+ * reference link 
+ *	http://www.phoronix.com/forums/showthread.php?21871-Setting-up-my-MTRR-correctly
+ */
+
 void __init mtrr_bp_init(void)
 {
 	u32 phys_addr;
@@ -602,6 +618,9 @@ void __init mtrr_bp_init(void)
 	phys_addr = 32;
 
 	if (cpu_has_mtrr) {
+		/*
+		 * 기본 셋팅이 Intel
+		 */
 		mtrr_if = &generic_mtrr_ops;
 		size_or_mask = 0xff000000;			/* 36 bits */
 		size_and_mask = 0x00f00000;
