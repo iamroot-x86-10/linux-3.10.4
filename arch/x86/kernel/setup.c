@@ -1166,6 +1166,43 @@ void __init setup_arch(char **cmdline_p)
 	 * needs to be done after dmi_scan_machine, for the BP.
 	 */
 	init_hypervisor_platform();
+	/*
+	 * Extended BIOS Data Area (EBDA)에서 ROM 영역을 read하여
+	 * iomem_resource(PCI mem)에 추가한다.
+	 *
+	 * 0x000C0000  0x000C7FFF  32 KiB (typically)  ROM  Video BIOS
+	 * 0x000C8000  0x000EFFFF  160 KiB (typically) ROMs and unusable space Mapped hardware & Misc 
+	 * 0x000F0000  0x000FFFFF  64 KiB              ROM  Motherboard BIOS  
+	 *
+	 * http://blog.daum.net/english_100/80 참조
+	 *
+	 * struct resource {
+          resource_size_t start;   // start 와 end 는 이 리소스의 범위를 나타냄
+          resource_size_t end;
+          const char *name;
+          unsigned long flags;
+          struct resource *parent, *sibling, *child;
+	   };
+
+	 * iomem_resource 는 resource 구조체 형 변수로서 io memory 리소스들의
+	 * 트리 구조상 루트 역할을 한다. 리소스를 트리에 삽입하는 방법은
+	 * requst_resource(root, new) 함수를 통해 이루어지는데 이 함수는 new 가
+	 * root 의 범위 내에 존재하는가를 체크하여 그 법위내에 존재하는 리소스이면
+	 * 그 child들과 비교하여 겹치는 것이 없을 경우 child들 사이에 순서에 맞추어
+	 * 삽입하여 다른 child 들과 sibling 으로 연결해 준다. 이때 삽이이 성공하면
+	 * 0 를 반환하고 new 와 겹치는 child 가 있는 경우 이 child 의 주소를
+	 * 반환한다.
+	 * 또하나의 삽입함수로 insert_resource(root , new) 함수가 있는데 이는
+	 * 사실상 request_resource()  함수를 포함하는 함수이다. 소스코드상
+	 * request_resource() 함수는 바로 __request_resource() 함수를 호출함으로써
+	 * 임무가 완성되지만 insert_request() 함수는 __request_request() 함수를
+	 * 이용해 그다음의 작업을 수행하기 때문이다. 앞에서 __request_resource()
+	 * 함수를 수행함에 있어 new 가 겹치는 child를 발견했을 때 단지 그 주소만
+	 * 반환하고 끝냈지만 insert_resource() 함수는 그 겹치는 형태가 어떤
+	 * 모양인가를 체크해 new 의 범위가 child의 범위를 포함하는 경우에는
+	 * 그 child 자리에 new를 삽입하고 new 에 포함되는 child들은 원래있던
+	 * 자리에서 빼내 new의 child로 재배치 하는 작업을 수행한다.
+	 */
 
 	x86_init.resources.probe_roms();
 
@@ -1174,7 +1211,22 @@ void __init setup_arch(char **cmdline_p)
 	insert_resource(&iomem_resource, &data_resource);
 	insert_resource(&iomem_resource, &bss_resource);
 
+	// kernel .text .data .bss e820.map에 E820_RAM type으로 mark
+	// 되어 있는지 확인하고 안되어 있는 경우 e820.map에 add한다.
 	e820_add_kernel_range();
+
+	/*
+	 * e820 update range: 0000000000000000 - 0000000000010000 (usable) ==> (reserved)  
+	 * e820 update range: 0000000000000000 - 0000000000001000 (usable) ==> (reserved)  
+	 * e820 remove range: 00000000000a0000 - 0000000000100000 (usable)         
+	 *
+	 * 0 ~ 4KB는 모든 Bios에서 사용하는 영역
+	 * 0 ~ 640KB는 X86_RESERVE_LOW config를 이용하여 자신의 Bios에서 사용하는
+	 * 영역을 설정할 수 있다. Default는 64KB이다.
+	 * 일부 PC Bios에서 Bios 영역을 1MB로 잘못 Report하는 경우 때문에
+	 * 640KB ~ 1MB를 사용가능 영역으로 설정한다. 
+	 */
+
 	trim_bios_range();
 #ifdef CONFIG_X86_32
 	if (ppro_with_ram_bug()) {

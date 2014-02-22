@@ -182,6 +182,7 @@ static int __init romsignature(const unsigned char *rom)
 	const unsigned short * const ptr = (const unsigned short *)rom;
 	unsigned short sig;
 
+	// ptr에서 2바이트를 read하여 sig에 저장하고 sig가 0xaa55이면 true
 	return probe_kernel_address(ptr, sig) == 0 && sig == ROMSIGNATURE;
 }
 
@@ -203,11 +204,17 @@ void __init probe_roms(void)
 
 	/* video rom */
 	upper = adapter_rom_resources[0].start;
+	// video rom의 시작위치로 부터 2K단위로 0xaa55를 찾아서
+	// checksum 검사를 마친후 유효한 경우 video_rom_resource를
+	// iomem_resource에 추가한다.
 	for (start = video_rom_resource.start; start < upper; start += 2048) {
+		// start address를 가상 주소로 변환
 		rom = isa_bus_to_virt(start);
+		// rom의 처음 2바이트가 0xaa55인지 확인
 		if (!romsignature(rom))
 			continue;
 
+		// video rom의 시작위치 설정
 		video_rom_resource.start = start;
 
 		if (probe_kernel_address(rom + 2, c) != 0)
@@ -220,19 +227,25 @@ void __init probe_roms(void)
 		if (length && romchecksum(rom, length))
 			video_rom_resource.end = start + length - 1;
 
+		// video_rom_resource를 iomem_resource에 추가한다.
 		request_resource(&iomem_resource, &video_rom_resource);
 		break;
 	}
 
+	// start를 다음 2KB align으로 맞춘다.
 	start = (video_rom_resource.end + 1 + 2047) & ~2047UL;
+	// start가 upper = 0xc8000미만이면 upper로 설정
 	if (start < upper)
 		start = upper;
 
 	/* system rom */
+	// system_rom_resource(Motherboard BIOS)를 iomem_resource에 추가한다.
 	request_resource(&iomem_resource, &system_rom_resource);
+	// upper = 0xf0000
 	upper = system_rom_resource.start;
 
 	/* check for extension rom (ignore length byte!) */
+	// extension_rom이 존재하면 iomem_resource에 추가한다.
 	rom = isa_bus_to_virt(extension_rom_resource.start);
 	if (romsignature(rom)) {
 		length = resource_size(&extension_rom_resource);
@@ -243,6 +256,7 @@ void __init probe_roms(void)
 	}
 
 	/* check for adapter roms on 2k boundaries */
+	// 2KB 단위로 0xc8000 ~ extension_rom 또는 system_rom 시작 위치까지 check
 	for (i = 0; i < ARRAY_SIZE(adapter_rom_resources) && start < upper; start += 2048) {
 		rom = isa_bus_to_virt(start);
 		if (!romsignature(rom))

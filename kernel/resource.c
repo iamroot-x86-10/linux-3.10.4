@@ -284,6 +284,9 @@ struct resource *request_resource_conflict(struct resource *root, struct resourc
 	struct resource *conflict;
 
 	write_lock(&resource_lock);
+	// conflict == root: new를 추가할수 없다.
+	// conflict == NULL: new가 신규로 추가 되었다.
+	// conflict != NULL: 충돌로 추가할수 없다.
 	conflict = __request_resource(root, new);
 	write_unlock(&resource_lock);
 	return conflict;
@@ -634,11 +637,15 @@ static struct resource * __insert_resource(struct resource *parent, struct resou
 
 	for (;; parent = first) {
 		first = __request_resource(parent, new);
+		// new가 parent에 성공적으로 추가된 경우
 		if (!first)
 			return first;
 
+		// new의 start, end가 잘못된 경우
 		if (first == parent)
 			return first;
+
+		// 추가할려는 new가 이미 존재한 경우
 		if (WARN_ON(first == new))	/* duplicated insertion */
 			return first;
 
