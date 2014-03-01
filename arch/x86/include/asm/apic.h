@@ -191,7 +191,12 @@ static inline int x2apic_enabled(void)
 	if (!cpu_has_x2apic)
 		return 0;
 
+    /*  
+     * MSR_IA32_APICBASE(CPU에 있는 레지스터, MSR 레지스터는 여러 종류가 있음)를 
+     * 읽어와서 X2APIC_ENABLE을 기준으로 enable되어있는지 검사한다.
+    */
 	rdmsrl(MSR_IA32_APICBASE, msr);
+    /* #define X2APIC_ENABLE	(1UL << 10) */
 	if (msr & X2APIC_ENABLE)
 		return 1;
 	return 0;

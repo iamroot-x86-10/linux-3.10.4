@@ -93,7 +93,7 @@
    #endif
 
    #ifndef __iomem       /* For clean compiles in earlier kernels without __iomem annotations */
-      #define __iomem
+                                                                   
    #endif
 
    #define pci_dma_hi32(a)         ((a >> 16) >> 16)

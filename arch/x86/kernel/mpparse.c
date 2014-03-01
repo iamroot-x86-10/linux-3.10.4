@@ -561,6 +561,9 @@ static void __init smp_reserve_memory(struct mpf_intel *mpf)
 	memblock_reserve(mpf->physptr, get_mpc_size(mpf->physptr));
 }
 
+/* smp_scan_config(0x0, 0x400) ||
+   smp_scan_config(639 * 0x400, 0x400) ||
+   smp_scan_config(0xF0000, 0x10000)) */
 static int __init smp_scan_config(unsigned long base, unsigned long length)
 {
 	unsigned int *bp = phys_to_virt(base);
@@ -613,6 +616,12 @@ void __init default_find_smp_config(void)
 	 * 2) Scan the top 1K of base RAM
 	 * 3) Scan the 64K of bios
 	 */
+
+	/* 아래 3가지 address 주소범위에서 mpf_intel 구조체를 smp configuration table의
+	 * header로 보고 이를 검색해서 memblock_reserve()를 통해 reserve한뒤에,
+	 * mpf_intel->physptr이 실제 SMP config의 데이터위치로 보고, 실제 config데이터도
+	 * memblock_reserve()한다. SMP config를 찾았고, reserve까지 하면 1이 리턴됨으로,
+	 * 찾았을 경우 이 함수를 빠져나가게된다. */
 	if (smp_scan_config(0x0, 0x400) ||
 	    smp_scan_config(639 * 0x400, 0x400) ||
 	    smp_scan_config(0xF0000, 0x10000))
@@ -634,9 +643,16 @@ void __init default_find_smp_config(void)
 	 * MP1.4 SPEC states to only scan first 1K of 4K EBDA.
 	 */
 
+	/*
+	 * base가 0x0, 639, 0xf0000으로 시작하는 주소범위에서 SMP config를 찾지 못했을 경우
+	 * BDA 0x40E에 존재하는 EBDA의 주소를 직접읽어와서 EBDA의 주소를 구하고,
+	 * 이 주소를 base로 SMP config를 찾아 설정한다. */
 	address = get_bios_ebda();
 	if (address)
 		smp_scan_config(address, 0x400);
+
+	/* 위 2가지 방법으로 SMP config를 찾지 못했을 경우에,
+	 * mfp_found가 NULL일 것이다.
 }
 
 #ifdef CONFIG_X86_IO_APIC

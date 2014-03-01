@@ -114,7 +114,9 @@ phys_addr_t __init_memblock memblock_find_in_range_node(phys_addr_t start,
 	/* avoid allocating the first page */
 	start = max_t(phys_addr_t, start, PAGE_SIZE);
 	end = max(start, end);
-
+	// start = 4096
+	// end = 100000
+	
 	for_each_free_mem_range_reverse(i, nid, &this_start, &this_end, NULL) {
 		this_start = clamp(this_start, start, end);
 		this_end = clamp(this_end, start, end);
@@ -449,6 +451,7 @@ int __init_memblock memblock_add_node(phys_addr_t base, phys_addr_t size,
 
 int __init_memblock memblock_add(phys_addr_t base, phys_addr_t size)
 {
+	// MAX_NUMNODES = 64;
 	return memblock_add_region(&memblock.memory, base, size, MAX_NUMNODES);
 }
 
@@ -966,6 +969,11 @@ void __init_memblock memblock_trim_memory(phys_addr_t align)
 	for (i = 0; i < mem->cnt; i++) {
 		orig_start = mem->regions[i].base;
 		orig_end = mem->regions[i].base + mem->regions[i].size;
+		// |----------------------
+		//      |     |     |    |
+		//        | }
+		//      start
+		//      end
 		start = round_up(orig_start, align);
 		end = round_down(orig_end, align);
 
@@ -974,7 +982,7 @@ void __init_memblock memblock_trim_memory(phys_addr_t align)
 
 		if (start < end) {
 			mem->regions[i].base = start;
-			mem->regions[i].size = end - start;
+			mem->regions[i].size = end - start;  /// page 단위.
 		} else {
 			memblock_remove_region(mem, i);
 			i--;

@@ -83,11 +83,18 @@ __ref void *alloc_low_pages(unsigned int num)
 RESERVE_BRK(early_pgt_alloc, INIT_PGT_BUF_SIZE);
 void  __init early_alloc_pgt_buf(void)
 {
+	/* INIT_PGT_BUF_SIZE -> 4K * 5개 */
 	unsigned long tables = INIT_PGT_BUF_SIZE;
 	phys_addr_t base;
 
 	base = __pa(extend_brk(tables, PAGE_SIZE));
 
+	/*
+	 *  |----------------------------------------------|
+	 *                 |      20k	     |
+	 *                 start             top
+	 *                 end
+	 */
 	pgt_buf_start = base >> PAGE_SHIFT;
 	pgt_buf_end = pgt_buf_start;
 	pgt_buf_top = pgt_buf_start + (tables >> PAGE_SHIFT);

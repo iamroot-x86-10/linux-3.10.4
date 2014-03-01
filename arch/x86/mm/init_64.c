@@ -378,9 +378,14 @@ void __init init_extra_mapping_uc(unsigned long phys, unsigned long size)
  */
 void __init cleanup_highmap(void)
 {
+	//// #define __START_KERNEL_map	_AC(0xffffffff80000000, UL)
 	unsigned long vaddr = __START_KERNEL_map;
+	//// #define KERNEL_IMAGE_SIZE	(512 * 1024 * 1024) 512MB
 	unsigned long vaddr_end = __START_KERNEL_map + KERNEL_IMAGE_SIZE;
+	//// PMD_SIZE 2MB
+	//_brk_end를 2mb로 align을 맞춘다.
 	unsigned long end = roundup((unsigned long)_brk_end, PMD_SIZE) - 1;
+	// pmd는 현재 kernel이 올라와있는 pmd를 가리킴
 	pmd_t *pmd = level2_kernel_pgt;
 
 	/*

@@ -92,6 +92,13 @@ int __init e820_all_mapped(u64 start, u64 end, unsigned type)
 		/* if the region is at the beginning of <start,end> we move
 		 * start to the end of the region since it's ok until there
 		 */
+		/*
+		 * |------------------------------------------
+		 *       |         |
+		 *       ei.addr   ei.end
+		 *                 |         |
+		 *                 start     end
+		 */
 		if (ei->addr <= start)
 			start = ei->addr + ei->size;
 		/*
@@ -792,11 +799,17 @@ static unsigned long __init e820_end_pfn(unsigned long limit_pfn, unsigned type)
 }
 unsigned long __init e820_end_of_ram_pfn(void)
 {
+	//# define MAX_ARCH_PFN MAXMEM>>PAGE_SHIFT
+	//PAGE_SHIFT 12
+	//MAX
 	return e820_end_pfn(MAX_ARCH_PFN, E820_RAM);
 }
 
 unsigned long __init e820_end_of_low_ram_pfn(void)
 {
+	/* 1UL<<(32 - PAGE_SHIFT) --> 1MB
+	 * E820_RAM               --> 1
+	 */
 	return e820_end_pfn(1UL<<(32 - PAGE_SHIFT), E820_RAM);
 }
 
@@ -1107,6 +1120,7 @@ void __init memblock_x86_fill(void)
 	 * We are safe to enable resizing, beause memblock_x86_fill()
 	 * is rather later for x86
 	 */
+	/* memblock_can_resize = 1; */
 	memblock_allow_resize();
 
 	for (i = 0; i < e820.nr_map; i++) {

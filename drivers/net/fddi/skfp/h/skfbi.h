@@ -129,21 +129,21 @@
 
 /*	PCI_HEADER_T	8 bit	Header Type */
 #define	PCI_HD_MF_DEV	0x80	/* Bit 7:	0= single, 1= multi-func dev */
-#define	PCI_HD_TYPE	0x7f	/* Bit 6..0:	Header Layout 0= normal */
+#define	PCI_HD_TYPE	    0x7f	/* Bit 6..0:	Header Layout 0= normal */
 
 /*	PCI_BIST	8 bit	Built-in selftest */
 #define	PCI_BIST_CAP	0x80	/* Bit 7:	BIST Capable */
-#define	PCI_BIST_ST	0x40	/* Bit 6:	Start BIST */
+#define	PCI_BIST_ST	    0x40	/* Bit 6:	Start BIST */
 #define	PCI_BIST_RET	0x0f	/* Bit 3..0:	Completion Code */
 
 /*	PCI_BASE_1ST	32 bit	1st Base address */
-#define	PCI_MEMSIZE	0x800L       /* use 2 kB Memory Base */
+#define	PCI_MEMSIZE	    0x800L       /* use 2 kB Memory Base */
 #define	PCI_MEMBASE_BITS 0xfffff800L /* Bit 31..11:	Memory Base Address */
 #define	PCI_MEMSIZE_BIIS 0x000007f0L /* Bit 10..4:	Memory Size Req. */
-#define	PCI_PREFEN	0x00000008L  /* Bit 3:		Prefetchable */
-#define	PCI_MEM_TYP	0x00000006L  /* Bit 2..1:	Memory Type */
+#define	PCI_PREFEN	    0x00000008L  /* Bit 3:		Prefetchable */
+#define	PCI_MEM_TYP	    0x00000006L  /* Bit 2..1:	Memory Type */
 #define	PCI_MEM32BIT	(0<<1)	     /* Base addr anywhere in 32 Bit range */
-#define	PCI_MEM1M	(1<<1)	     /* Base addr below 1 MegaByte */
+#define	PCI_MEM1M	    (1<<1)	     /* Base addr below 1 MegaByte */
 #define	PCI_MEM64BIT	(2<<1)	     /* Base addr anywhere in 64 Bit range */
 #define	PCI_MEMSPACE	0x00000001L  /* Bit 0:	Memory Space Indic. */
 

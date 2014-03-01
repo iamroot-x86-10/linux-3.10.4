@@ -1150,7 +1150,6 @@ void __init setup_arch(char **cmdline_p)
 	if (efi_enabled(EFI_BOOT))
 		efi_init();
 	/* 2014.01.18 스터디 완료 */
-
 	/*
 	 * DMI: Direct Media Interface
 	 *  2004년 이후의 모든 인텔 칩셋들은 
@@ -1259,10 +1258,16 @@ void __init setup_arch(char **cmdline_p)
 #else
 	num_physpages = max_pfn;
 
+	/* 2014.03.01 시작 */
+	/* cpu에 x2apic 기능이 있고, enable되어 있다면,
+	 * x2apic_preenabled = x2apic_mode = 1; 한다.
+	 */
 	check_x2apic();
 
 	/* How many end-of-memory variables you have, grandma! */
 	/* need this before calling reserve_initrd */
+	/* 현재 물리메모리가 4G보다 큰지를 max_pfn을 통해 검사 */
+	/* max_low_pfn: 4G미만 주소상에서 e820엔트리중 가장 큰 주소값의 pfn */
 	if (max_pfn > (1UL<<(32 - PAGE_SHIFT)))
 		max_low_pfn = e820_end_of_low_ram_pfn();
 	else
@@ -1276,6 +1281,7 @@ void __init setup_arch(char **cmdline_p)
 	 */
 	find_smp_config();
 
+	/*   */
 	reserve_ibft_region();
 
 	early_alloc_pgt_buf();
@@ -1285,10 +1291,16 @@ void __init setup_arch(char **cmdline_p)
 	 *  it could use memblock_find_in_range, could overlap with
 	 *  brk area.
 	 */
+	/* 이전 early_alloc_pgt_buf()을 통해 사용한 20K만큼의 공간을 reserve */
 	reserve_brk();
 
+	/* pmd중에,
+	 * START_KERNEL ~ _text의 영역과,
+	 * _brk_end ~ .end까지의 영역을 0으로 초기화.
+	 */
 	cleanup_highmap();
 
+	//#define ISA_END_ADDRESS		0x100000
 	memblock.current_limit = ISA_END_ADDRESS;
 	memblock_x86_fill();
 
@@ -1296,9 +1308,11 @@ void __init setup_arch(char **cmdline_p)
 	 * The EFI specification says that boot service code won't be called
 	 * after ExitBootServices(). This is, in fact, a lie.
 	 */
+	//// #define EFI_MEMMAP		4	/* Can we use EFI memory map? */
 	if (efi_enabled(EFI_MEMMAP))
 		efi_reserve_boot_services();
 
+	/* 2014.03.01 ended. 여기서부터 하시면 되요... */
 	/* preallocate 4k for mptable mpc */
 	early_reserve_e820_mpc_new();
 
