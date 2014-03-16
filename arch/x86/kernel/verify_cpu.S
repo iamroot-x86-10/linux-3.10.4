@@ -47,12 +47,12 @@ verify_cpu:
 	pushfl				# standard way to check for cpuid
 	popl	%eax
 	movl	%eax,%ebx
-	xorl	$0x200000,%eax		!!// eflag에 cpu id를 반전
+	xorl	$0x200000,%eax		 /* eflag에 cpu id를 반전 */
 	pushl	%eax
 	popfl
 	pushfl
 	popl	%eax
-	cmpl	%eax,%ebx	 	!!// 다시 읽어들여서 cpu id가 존재하는지 확인 
+	cmpl	%eax,%ebx	 	/*  다시 읽어들여서 cpu id가 존재하는지 확인 */
 	jz	verify_cpu_no_longmode	# cpu has no cpuid
 
 	movl	$0x0,%eax		# See if cpuid 1 is implemented

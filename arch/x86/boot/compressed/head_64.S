@@ -76,7 +76,7 @@ ENTRY(startup_32)
 	 * Test KEEP_SEGMENTS flag to see if the bootloader is asking
 	 * us to not reload segments
 	 */
-	testb $(1<<6), BP_loadflags(%esi)  !! esi는 boot_parmas table의 위치이다. pmjump.S의 30번 라인
+	testb $(1<<6), BP_loadflags(%esi)  /*  esi는 boot_parmas table의 위치이다. pmjump.S의 30번 라인 */
 	/*
 	 * Test KEEP_SEGMENTS flag to see if the bootloader is asking
 	 * us to not reload segments
@@ -93,8 +93,8 @@ ENTRY(startup_32)
 	 * code32 -> code64로 변경하여 그 부분에서 setting 한다. 
 	 */
 
-	jnz 1f 	!! KEEP_SEGMENTS가 설정되어 있으면 1로점프
-			!! 설정되어있지 않으면  세그먼트 레지스터들을 재설정한다. 		
+	jnz 1f 	/* KEEP_SEGMENTS가 설정되어 있으면 1로점프
+		 설정되어있지 않으면  세그먼트 레지스터들을 재설정한다.*/	
 
 	/* 
 	 * kbuild에 의해서 BP_loadflags가 정의 된다.
@@ -126,16 +126,14 @@ ENTRY(startup_32)
  * data at 0x1e4 (defined as a scratch field) are used as the stack
  * for this calculation. Only 4 bytes are needed.
  */
-	leal	(BP_scratch+4)(%esi), %esp  !! boot_params.scratch의 주소를 스택포인터로사용하기위해서
-										!! esp에 저장한다.
+	leal	(BP_scratch+4)(%esi), %esp  /* boot_params.scratch의 주소를 스택포인터로사용하기위해서
+					        esp에 저장한다.*/
 
-	call	1f   						!! 1:의 위치가 boot_params.scratch에 저장이된다.
-										!! call을 하게되면 돌아갈 위치가 스택에 저장되기 때문이다.
-
-1:	popl	%ebp 						!! ebp에는 이 위치의 주소가 저장된다.
-
-	subl	$1b, %ebp					!! 1b는 컴파일시의 주소값,
-										!! ebp는 로드됬을 때 주소값의 delta 를 ebp에 저장한다.
+	call	1f   		  	/*  1:의 위치가 boot_params.scratch에 저장이된다. */
+					/*  call을 하게되면 돌아갈 위치가 스택에 저장되기 때문이다. */
+1:	popl	%ebp 			/*  ebp에는 이 위치의 주소가 저장된다. */
+	subl	$1b, %ebp		/*  1b는 컴파일시의 주소값,
+					    ebp는 로드됬을 때 주소값의 delta 를 ebp에 저장한다.*/
 
 
 /*
@@ -168,12 +166,12 @@ Default CONFIG_PHYSICAL_START and CONFIG_PHYSICAL_ALIGN each to 16 MB,
 	addl	%ebp, %eax
 	movl	%eax, %esp
 
-	call	verify_cpu 		!! verify_cpu.S로 jmp
+	call	verify_cpu 		/* verify_cpu.S로 jmp */
    	/* 
 	 *  verify_cpu, returns the status of longmode and SSE in register %eax.
 	 *		0: Success    1: Failure
 	 */
-	testl	%eax, %eax	 	!! eax & eax 이므로 success면 밑으로 failure인 경우 jmp	
+	testl	%eax, %eax	 	/* eax & eax 이므로 success면 밑으로 failure인 경우 jmp	*/
 
 	jnz	no_longmode
 
@@ -253,11 +251,11 @@ Default CONFIG_PHYSICAL_START and CONFIG_PHYSICAL_ALIGN each to 16 MB,
 	 */
 
 	leal	gdt(%ebp), %eax
-	movl	%eax, gdt+2(%ebp)		!! .long gdt(gdt label의 주소) + ebp 
-	lgdt	gdt(%ebp)			!! lgdt에서 size, address 필요한데 위와 같은 정보를 통해 접근
+	movl	%eax, gdt+2(%ebp)		/* .long gdt(gdt label의 주소) + ebp 
+	lgdt	gdt(%ebp)			 * lgdt에서 size, address 필요한데 위와 같은 정보를 통해 접근 */
 
-	/* Enable PAE mode */			!! PAE = Physical Address Extension 32bit architecture에서 4GB이상의 memory를 접근하기 위한 mode
-						!! http://ko.wikipedia.org/wiki/%EB%AC%BC%EB%A6%AC_%EC%A3%BC%EC%86%8C_%ED%99%95%EC%9E%A5 참고 
+	/* Enable PAE mode */			/* PAE = Physical Address Extension 32bit architecture에서 4GB이상의 memory를 접근하기 위한 mode
+						 * http://ko.wikipedia.org/wiki/%EB%AC%BC%EB%A6%AC_%EC%A3%BC%EC%86%8C_%ED%99%95%EC%9E%A5 참고 */
 	movl	$(X86_CR4_PAE), %eax
 	movl	%eax, %cr4
 
@@ -265,10 +263,10 @@ Default CONFIG_PHYSICAL_START and CONFIG_PHYSICAL_ALIGN each to 16 MB,
   * Build early 4G boot pagetable
   */
 	/* Initialize Page tables to 0 */
-	leal	pgtable(%ebx), %edi		!! ebp는(커널의 시작주소), ebx(16M(0x1000000) + z_extract_offset)
+	leal	pgtable(%ebx), %edi		/* ebp는(커널의 시작주소), ebx(16M(0x1000000) + z_extract_offset) */
 	xorl	%eax, %eax
-	movl	$((4096*6)/4), %ecx		!! ecx에 6K만큼 (24kb/4byte)를 설정한다. 
-	rep	stosl				!! pagetable을 24KB만큼 0으로 초기화 한다.
+	movl	$((4096*6)/4), %ecx		/* ecx에 6K만큼 (24kb/4byte)를 설정한다. 
+	rep	stosl				 * pagetable을 24KB만큼 0으로 초기화 한다.*/
 
 /* PAE Paging 
  * PDPTE(Page-Directory-Pointer Table Entry) Format
@@ -312,13 +310,13 @@ Default CONFIG_PHYSICAL_START and CONFIG_PHYSICAL_ALIGN each to 16 MB,
  * 
  */
 	/* Build Level 4 */
-	leal	pgtable + 0(%ebx), %edi		!! z_extract_offset(ebx) + pgtable => edi  
+	leal	pgtable + 0(%ebx), %edi		/* z_extract_offset(ebx) + pgtable => edi */
 	leal	0x1007 (%edi), %eax		
 	movl	%eax, 0(%edi)			
 
 	/* Build Level 3 */
 	leal	pgtable + 0x1000(%ebx), %edi
-	leal	0x1007(%edi), %eax			!! 0x1007 + %edi => %eax
+	leal	0x1007(%edi), %eax			/* 0x1007 + %edi => %eax */
 	movl	$4, %ecx
 1:	movl	%eax, 0x00(%edi)
 	addl	$0x00001000, %eax
@@ -498,12 +496,12 @@ preferred_addr:
 	 * 세션 구조를 확인 할 수 있다.
 	 */
 	pushq	%rsi
-	leaq	(_bss-8)(%rip), %rsi	!! 압축된 커널의 마지막 위치
-	leaq	(_bss-8)(%rbx), %rdi	!! 압축된 커널을 옮길 위치
-	movq	$_bss /* - $startup_32 */, %rcx !! arch/x86/boot/compressed/vmlinux.lds.S에서 
-											!! start_32를 0으로 가정하고 있기 때문에 
-											!! - start_32를 주석 처리한 것같다.
-	shrq	$3, %rcx	!! 8bytes 단위로 나눴다. 즉, 8byte단위로 복사를 하겠다.
+	leaq	(_bss-8)(%rip), %rsi	/* 압축된 커널의 마지막 위치 */
+	leaq	(_bss-8)(%rbx), %rdi	/* 압축된 커널을 옮길 위치*/
+	movq	$_bss /* - $startup_32 */, %rcx /*  arch/x86/boot/compressed/vmlinux.lds.S에서 
+						 *  start_32를 0으로 가정하고 있기 때문에 
+						 *  start_32를 주석 처리한 것같다. */
+	shrq	$3, %rcx	/* 8bytes 단위로 나눴다. 즉, 8byte단위로 복사를 하겠다. */
 	std
 	rep	movsq
 	cld
@@ -512,7 +510,7 @@ preferred_addr:
 /*
  * Jump to the relocated address.
  */
-	leaq	relocated(%rbx), %rax	!! rax에 reloated + rbx가 rax에 저장
+	leaq	relocated(%rbx), %rax	/* rax에 reloated + rbx가 rax에 저장 */
 	jmp	*%rax					
 	
 	/*
@@ -552,7 +550,7 @@ relocated:
 1:
 	cmpq	%rcx, %rdx
 	jae	2f
-	addq	%rbx, (%rdx)	!! 
+	addq	%rbx, (%rdx)	 
 	addq	$8, %rdx
 	jmp	1b
 2:
@@ -563,13 +561,13 @@ relocated:
 	pushq	%rsi			/* Save the real mode argument */
 	movq	%rsi, %rdi		/* real mode address */
 	leaq	boot_heap(%rip), %rsi	/* malloc area for uncompression */
-	leaq	input_data(%rip), %rdx  /* input_data */ !! mkpiggy.c에 의해서 piggy.S 파일이 생성,
-													 !! piggy.S에 input_data가 선언되어 있다.
-	movl	$z_input_len, %ecx	/* input_len */		 !! 압축된 커널 크기
-	movq	%rbp, %r8		/* output target address */ !! 압축을 풀 위치
-													 !! http://kkamagui.tistory.com/811 참고하면 64-bit에서 함수호출 
-													 !! 규약을 확인할 수 있다. 
-													 !! r8레지스터는 5번째 아규먼트에 해당된다.
+	leaq	input_data(%rip), %rdx  /* input_data */ /* mkpiggy.c에 의해서 piggy.S 파일이 생성,
+							    piggy.S에 input_data가 선언되어 있다. */
+	movl	$z_input_len, %ecx	/* input_len */	/*  압축된 커널 크기 */
+	movq	%rbp, %r8		/* output target address */ /*  압축을 풀 위치 */
+								/*  http://kkamagui.tistory.com/811 참고하면 64-bit에서 함수호출  */
+								/*  규약을 확인할 수 있다.  */
+								/*  r8레지스터는 5번째 아규먼트에 해당된다. */
 	call	decompress_kernel
 	popq	%rsi
 

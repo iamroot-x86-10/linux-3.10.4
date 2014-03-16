@@ -653,6 +653,7 @@ void __init default_find_smp_config(void)
 
 	/* 위 2가지 방법으로 SMP config를 찾지 못했을 경우에,
 	 * mfp_found가 NULL일 것이다.
+	 */
 }
 
 #ifdef CONFIG_X86_IO_APIC

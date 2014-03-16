@@ -85,21 +85,23 @@ static int has_fpu(void)
 		 * mov cr0(메모리), %cr0(레지스터)
 		 */
 	}
-					//fnitint : fpu초기화
-					//fnstsw :  fpu 상태를 읽어온다.
-					//fnstcw :  fpu control를 읽어온다.
-					// '+'는 input/output 모두 할 수 있다.
-	asm volatile("fninit ;	 
-					fnstsw %0 ; 
-					fnstcw %1"
-		    		 : "+m" (fsw), "+m" (fcw));
-					// 성공하면 fsw는 0이고
-					// fcw =  0x037f가 된다.
-					// 6bit는필요하고, 0x1000비트는 설정되면안되고
-					// 13bit는 무조건 0이여야한다.
-					//
-					// 상위15~12는 fpu전용으로 사용하고
-					// 8.1.3
+					/* fnitint : fpu초기화
+					 * fnstsw :  fpu 상태를 읽어온다.
+					 * fnstcw :  fpu control를 읽어온다.
+					 * '+'는 input/output 모두 할 수 있다. 
+					 */
+	asm volatile("fninit ; "
+	     	     "fnstsw %0 ; " 
+		     "fnstcw %1 "
+		     : "+m" (fsw), "+m" (fcw));
+	/* 성공하면 fsw는 0이고
+	 *
+	 * fcw =  0x037f가 된다.
+	 * 6bit는필요하고, 0x1000비트는 설정되면안되고
+	 * 13bit는 무조건 0이여야한다.
+	 * 상위15~12는 fpu전용으로 사용하고
+         * 8.1.3
+	 */
 	return fsw == 0 && (fcw & 0x103f) == 0x003f;
 }
 
