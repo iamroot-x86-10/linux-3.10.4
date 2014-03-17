@@ -1319,6 +1319,10 @@ void __init setup_arch(char **cmdline_p)
 	early_reserve_e820_mpc_new();
 
 #ifdef CONFIG_X86_CHECK_BIOS_CORRUPTION
+	/* 기본 64K이하 주소에서 reserved되지 않은 영역을 찾아 reserve해준뒤에,
+	 * scan_area[]에 포함시키고 종료한다. 이 영역은 0으로 초기화되었기 때문에(64K미만 전체영역)
+	 * 차후에는 scan_area[]를 통해서 bios나 기타 이유로 64K이하 영역이 변경되는 사항을 찾을 수 있을 것으로 보임
+	 */
 	setup_bios_corruption_check();
 #endif
 
