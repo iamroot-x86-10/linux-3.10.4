@@ -12,6 +12,11 @@ void __init reserve_real_mode(void)
 {
 	phys_addr_t mem;
 	unsigned char *base;
+	/*
+	 * arch/x86/realmode/rmpiggy.S에 realmode로 진입하는 ELF binary가 존재하며,
+	 * 이를 import함으로써 메모리에 해당 binary가 존재하는 상황이다.
+	 * real_mode_blob ~ real_mode_blob_end. 2개의 symbol로 해당 메모리에 접근할 수 있다.
+	 */
 	size_t size = PAGE_ALIGN(real_mode_blob_end - real_mode_blob);
 
 	/* Has to be under 1M so we can execute real-mode AP code. */

@@ -1331,6 +1331,11 @@ void __init setup_arch(char **cmdline_p)
 			(max_pfn_mapped<<PAGE_SHIFT) - 1);
 #endif
 
+	/*
+	 * realmode진입을 위한 binary가 메모리에 존재하며,
+	 * real_mode_blob ~ real_mode_blob_end. 2개의 symbol로 해당 메모리에 접근할 수 있다.
+	 * 해당영역을 reverse 해준다.
+	 */
 	reserve_real_mode();
 
 	// Sandy Bridge graphics 들 중에 추가 Page를 사용하는 칩을 위한
@@ -1338,6 +1343,9 @@ void __init setup_arch(char **cmdline_p)
 	trim_platform_memory_ranges();
 	trim_low_memory_range();
 
+	/*
+	 * 2014.03.15 스터디중 완료못함
+	 */
 	init_mem_mapping();
 
 	early_trap_pf_init();
