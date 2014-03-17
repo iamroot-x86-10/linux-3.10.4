@@ -601,6 +601,9 @@ static inline int pgd_none(pgd_t pgd)
  * this macro returns the index of the entry in the pgd page which would
  * control the given virtual address
  */
+// PGDIR_SHIFT = 39
+//0xffff880000000000
+//PGDIR_SHIFT = 0x8000000000
 #define pgd_index(address) (((address) >> PGDIR_SHIFT) & (PTRS_PER_PGD - 1))
 
 /*

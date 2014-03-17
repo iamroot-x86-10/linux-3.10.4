@@ -128,6 +128,7 @@ static int page_size_mask;
 
 static void __init probe_page_size_mask(void)
 {
+	//
 	init_gbpages();
 
 #if !defined(CONFIG_DEBUG_PAGEALLOC) && !defined(CONFIG_KMEMCHECK)
@@ -217,6 +218,7 @@ static int __meminit split_mem_range(struct map_range *mr, int nr_range,
 	unsigned long pfn;
 	int i;
 
+	// #1: limit_pfn = 256
 	limit_pfn = PFN_DOWN(end);
 
 	/* head if not big page alignment ? */
@@ -233,23 +235,29 @@ static int __meminit split_mem_range(struct map_range *mr, int nr_range,
 	else
 		end_pfn = round_up(pfn, PFN_DOWN(PMD_SIZE));
 #else /* CONFIG_X86_64 */
+	// #1: PFN_DOWN(PMD_SIZE) = 2MB/4K = 512
 	end_pfn = round_up(pfn, PFN_DOWN(PMD_SIZE));
 #endif
 	if (end_pfn > limit_pfn)
 		end_pfn = limit_pfn;
 	if (start_pfn < end_pfn) {
 		nr_range = save_mr(mr, nr_range, start_pfn, end_pfn, 0);
+		//nr_range = 1
 		pfn = end_pfn;
+		//pfn = 256
 	}
 
 	/* big page (2M) range */
 	start_pfn = round_up(pfn, PFN_DOWN(PMD_SIZE));
+	// #1: start_pfn = 512
 #ifdef CONFIG_X86_32
 	end_pfn = round_down(limit_pfn, PFN_DOWN(PMD_SIZE));
 #else /* CONFIG_X86_64 */
+	// #1: PFN_DOWN(PUD_SIZE) = 1G/4K = 256K
 	end_pfn = round_up(pfn, PFN_DOWN(PUD_SIZE));
 	if (end_pfn > round_down(limit_pfn, PFN_DOWN(PMD_SIZE)))
 		end_pfn = round_down(limit_pfn, PFN_DOWN(PMD_SIZE));
+		// #1: end_pfn = 0
 #endif
 
 	if (start_pfn < end_pfn) {
@@ -281,9 +289,15 @@ static int __meminit split_mem_range(struct map_range *mr, int nr_range,
 
 	/* tail is not big page (2M) alignment */
 	start_pfn = pfn;
+	// #1: start_pfn = 256 = end_pfn
 	end_pfn = limit_pfn;
+	// #1: end_pfn = 256
 	nr_range = save_mr(mr, nr_range, start_pfn, end_pfn, 0);
+	// #1: nr_range = 1
 
+	/*
+	 * after_bootmem을 위한 mem_init()의 호출여부를 알 수 없음...
+	 */
 	if (!after_bootmem)
 		adjust_range_page_size_mask(mr, nr_range);
 
@@ -355,8 +369,10 @@ unsigned long __init_refok init_memory_mapping(unsigned long start,
 
 	memset(mr, 0, sizeof(mr));
 	nr_range = split_mem_range(mr, 0, start, end);
+	// #1: nr_range = 1
 
 	for (i = 0; i < nr_range; i++)
+		// #1: mr[0].start = 0, end = 1MB, page_size_mask = 0
 		ret = kernel_physical_mapping_init(mr[i].start, mr[i].end,
 						   mr[i].page_size_mask);
 

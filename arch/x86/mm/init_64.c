@@ -611,10 +611,12 @@ kernel_physical_mapping_init(unsigned long start,
 	unsigned long addr;
 
 	start = (unsigned long)__va(start);
+        //__va(0xffff880000000000 + start);
 	end = (unsigned long)__va(end);
 	addr = start;
 
 	for (; start < end; start = next) {
+		// if start = 0, pgd_offset_k(start) = 256 + 16 = 272
 		pgd_t *pgd = pgd_offset_k(start);
 		pud_t *pud;
 

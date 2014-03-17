@@ -247,11 +247,11 @@ EXPORT_SYMBOL(edd);
  */
 static inline void __init copy_edd(void)
 {
-     memcpy(edd.mbr_signature, boot_params.edd_mbr_sig_buffer,
-	    sizeof(edd.mbr_signature));
-     memcpy(edd.edd_info, boot_params.eddbuf, sizeof(edd.edd_info));
-     edd.mbr_signature_nr = boot_params.edd_mbr_sig_buf_entries;
-     edd.edd_info_nr = boot_params.eddbuf_entries;
+	memcpy(edd.mbr_signature, boot_params.edd_mbr_sig_buffer,
+			sizeof(edd.mbr_signature));
+	memcpy(edd.edd_info, boot_params.eddbuf, sizeof(edd.edd_info));
+	edd.mbr_signature_nr = boot_params.edd_mbr_sig_buf_entries;
+	edd.edd_info_nr = boot_params.eddbuf_entries;
 }
 #else
 static inline void __init copy_edd(void)
@@ -288,7 +288,7 @@ static void __init reserve_brk(void)
 {
 	if (_brk_end > _brk_start)
 		memblock_reserve(__pa_symbol(_brk_start),
-				 _brk_end - _brk_start);
+				_brk_end - _brk_start);
 
 	/* Mark brk area as locked down and no longer taking any
 	   new allocations */
@@ -327,11 +327,11 @@ static void __init relocate_initrd(void)
 
 	/* We need to move the initrd down into directly mapped mem */
 	ramdisk_here = memblock_find_in_range(0, PFN_PHYS(max_pfn_mapped),
-						 area_size, PAGE_SIZE);
+			area_size, PAGE_SIZE);
 
 	if (!ramdisk_here)
 		panic("Cannot find place for new RAMDISK of size %lld\n",
-			 ramdisk_size);
+				ramdisk_size);
 
 	/* Note: this includes all the mem currently occupied by
 	   the initrd, we rely on that fact to keep the data intact. */
@@ -339,7 +339,7 @@ static void __init relocate_initrd(void)
 	initrd_start = ramdisk_here + PAGE_OFFSET;
 	initrd_end   = initrd_start + ramdisk_size;
 	printk(KERN_INFO "Allocated new RAMDISK: [mem %#010llx-%#010llx]\n",
-			 ramdisk_here, ramdisk_here + ramdisk_size - 1);
+			ramdisk_here, ramdisk_here + ramdisk_size - 1);
 
 	q = (char *)initrd_start;
 
@@ -361,9 +361,9 @@ static void __init relocate_initrd(void)
 	ramdisk_image = get_ramdisk_image();
 	ramdisk_size  = get_ramdisk_size();
 	printk(KERN_INFO "Move RAMDISK from [mem %#010llx-%#010llx] to"
-		" [mem %#010llx-%#010llx]\n",
-		ramdisk_image, ramdisk_image + ramdisk_size - 1,
-		ramdisk_here, ramdisk_here + ramdisk_size - 1);
+			" [mem %#010llx-%#010llx]\n",
+			ramdisk_image, ramdisk_image + ramdisk_size - 1,
+			ramdisk_here, ramdisk_here + ramdisk_size - 1);
 }
 
 static void __init early_reserve_initrd(void)
@@ -374,7 +374,7 @@ static void __init early_reserve_initrd(void)
 	u64 ramdisk_end   = PAGE_ALIGN(ramdisk_image + ramdisk_size);
 
 	if (!boot_params.hdr.type_of_loader ||
-	    !ramdisk_image || !ramdisk_size)
+			!ramdisk_image || !ramdisk_size)
 		return;		/* No initrd provided by bootloader */
 
 	memblock_reserve(ramdisk_image, ramdisk_end - ramdisk_image);
@@ -388,7 +388,7 @@ static void __init reserve_initrd(void)
 	u64 mapped_size;
 
 	if (!boot_params.hdr.type_of_loader ||
-	    !ramdisk_image || !ramdisk_size)
+			!ramdisk_image || !ramdisk_size)
 		return;		/* No initrd provided by bootloader */
 
 	initrd_start = 0;
@@ -396,8 +396,8 @@ static void __init reserve_initrd(void)
 	mapped_size = memblock_mem_size(max_pfn_mapped);
 	if (ramdisk_size >= (mapped_size>>1))
 		panic("initrd too large to handle, "
-		       "disabling initrd (%lld needed, %lld available)\n",
-		       ramdisk_size, mapped_size>>1);
+				"disabling initrd (%lld needed, %lld available)\n",
+				ramdisk_size, mapped_size>>1);
 
 	printk(KERN_INFO "RAMDISK: [mem %#010llx-%#010llx]\n", ramdisk_image,
 			ramdisk_end - 1);
@@ -430,8 +430,8 @@ static void __init parse_setup_data(void)
 	/*
 	 * arch/x86/boot/header.S LINE 418
 	 * boot_params.hdr.setup_data: # 64-bit physical pointer to 
- 	 * 								single linked list of struct setup_data
- 	 */
+	 * 								single linked list of struct setup_data
+	 */
 	pa_data = boot_params.hdr.setup_data;
 	while (pa_data) {
 		u32 data_len, map_len;
@@ -440,8 +440,8 @@ static void __init parse_setup_data(void)
 		/*  1 0000 0000 0000 - (pa_data & (0000 1111 1111 1111) */
 		/*  1 0000 0000 0000 - (pa_data */
 		map_len = max(PAGE_SIZE - (pa_data & ~PAGE_MASK),
-			      (u64)sizeof(struct setup_data));
-		
+				(u64)sizeof(struct setup_data));
+
 		/*
 		 * pa_data는 physical memory 영역이므로 
 		 * fix_bitmap에 페이지 테이블을 작성해두었다. 
@@ -467,20 +467,20 @@ static void __init parse_setup_data(void)
 			 * 따라서 setup_memory_map()에서 bootparam.e820_map에 대한처리를
 			 * 하고 그이상의 entry여 이 함수에서 처리한다. 
 			 */
-		case SETUP_E820_EXT:
-			parse_e820_ext(data);
-			break;
-			/*
-			 * Device Tree Binary
-			 */
-		case SETUP_DTB:
-			add_dtb(pa_data);
-			break;
-		default:
-			/*
-			 * PCI와관련된 map정보는 E820에 포함되었다고 판단된다. 
-			 */
-			break;
+			case SETUP_E820_EXT:
+				parse_e820_ext(data);
+				break;
+				/*
+				 * Device Tree Binary
+				 */
+			case SETUP_DTB:
+				add_dtb(pa_data);
+				break;
+			default:
+				/*
+				 * PCI와관련된 map정보는 E820에 포함되었다고 판단된다. 
+				 */
+				break;
 		}
 		pa_data = data->next;
 		early_iounmap(data, map_len);
@@ -503,7 +503,7 @@ static void __init e820_reserve_setup_data(void)
 				/*
 				 * 커널에서만 사용하도록 예약한다. 
 				 */
-			 E820_RAM, E820_RESERVED_KERN);
+				E820_RAM, E820_RESERVED_KERN);
 		found = 1;
 		pa_data = data->next;
 		early_iounmap(data, sizeof(*data));
@@ -563,7 +563,7 @@ static void __init reserve_crashkernel_low(void)
 	total_low_mem = memblock_mem_size(1UL<<(32-PAGE_SHIFT));
 	/* crashkernel=Y,low */
 	ret = parse_crashkernel_low(boot_command_line, total_low_mem,
-						&low_size, &base);
+			&low_size, &base);
 	if (ret != 0) {
 		/*
 		 * two parts from lib/swiotlb.c:
@@ -581,7 +581,7 @@ static void __init reserve_crashkernel_low(void)
 	}
 
 	low_base = memblock_find_in_range(low_size, (1ULL<<32),
-					low_size, alignment);
+			low_size, alignment);
 
 	if (!low_base) {
 		if (!auto_set)
@@ -629,9 +629,9 @@ static void __init reserve_crashkernel(void)
 		 *  kexec want bzImage is below CRASH_KERNEL_ADDR_MAX
 		 */
 		crash_base = memblock_find_in_range(alignment,
-					high ? CRASH_KERNEL_ADDR_HIGH_MAX :
-					       CRASH_KERNEL_ADDR_LOW_MAX,
-					crash_size, alignment);
+				high ? CRASH_KERNEL_ADDR_HIGH_MAX :
+				CRASH_KERNEL_ADDR_LOW_MAX,
+				crash_size, alignment);
 
 		if (!crash_base) {
 			pr_info("crashkernel reservation failed - No suitable area found.\n");
@@ -642,7 +642,7 @@ static void __init reserve_crashkernel(void)
 		unsigned long long start;
 
 		start = memblock_find_in_range(crash_base,
-				 crash_base + crash_size, crash_size, 1<<20);
+				crash_base + crash_size, crash_size, 1<<20);
 		if (start != crash_base) {
 			pr_info("crashkernel reservation failed - memory is in use.\n");
 			return;
@@ -769,11 +769,11 @@ static void __init trim_snb_memory(void)
 	 * already been reserved.
 	 */
 	memblock_reserve(0, 1<<20);
-	
+
 	for (i = 0; i < ARRAY_SIZE(bad_pages); i++) {
 		if (memblock_reserve(bad_pages[i], PAGE_SIZE))
 			printk(KERN_WARNING "failed to reserve 0x%08lx\n",
-			       bad_pages[i]);
+					bad_pages[i]);
 	}
 }
 
@@ -861,7 +861,7 @@ static void __init trim_low_memory_range(void)
 {
 	memblock_reserve(0, ALIGN(reserve_low, PAGE_SIZE));
 }
-	
+
 /*
  * Determine if we were loaded by an EFI loader.  If so, then we have also been
  * passed the efi memmap, systab, etc., so we should use these data structures
@@ -885,7 +885,7 @@ void __init setup_arch(char **cmdline_p)
 	 * 아마 뒤에 메모리를 항당할 때 여기를 참조하여 할당가능 영역을 계산할 거같다.
 	 */
 	memblock_reserve(__pa_symbol(_text),
-			 (unsigned long)__bss_stop - (unsigned long)_text);
+			(unsigned long)__bss_stop - (unsigned long)_text);
 
 	early_reserve_initrd();
 
@@ -941,7 +941,7 @@ void __init setup_arch(char **cmdline_p)
 	 * 그래서 아마도 ROOT_DEV는 0으로 초기화 될거 같다.
 	 */
 	ROOT_DEV = old_decode_dev(boot_params.hdr.root_dev);
-	
+
 	screen_info = boot_params.screen_info;
 	edid_info = boot_params.edid_info;
 #ifdef CONFIG_X86_32
@@ -961,8 +961,8 @@ void __init setup_arch(char **cmdline_p)
 	bootloader_type = boot_params.hdr.type_of_loader;
 	if ((bootloader_type >> 4) == 0xe) {
 		bootloader_type &= 0xf;			// 0x4
-										// 0x15 << 4 -> 0x150
-										// booload_type = 0x154 
+		// 0x15 << 4 -> 0x150
+		// booload_type = 0x154 
 		bootloader_type |= (boot_params.hdr.ext_loader_type+0x10) << 4;
 	}
 	bootloader_version  = bootloader_type & 0xf;
@@ -983,10 +983,10 @@ void __init setup_arch(char **cmdline_p)
 	 */
 #ifdef CONFIG_EFI
 	if (!strncmp((char *)&boot_params.efi_info.efi_loader_signature,
-		     "EL32", 4)) {
+				"EL32", 4)) {
 		set_bit(EFI_BOOT, &x86_efi_facility);
 	} else if (!strncmp((char *)&boot_params.efi_info.efi_loader_signature,
-		     "EL64", 4)) {
+				"EL64", 4)) {
 		set_bit(EFI_BOOT, &x86_efi_facility);
 		set_bit(EFI_64BIT, &x86_efi_facility);
 	}
@@ -998,7 +998,7 @@ void __init setup_arch(char **cmdline_p)
 	if (efi_enabled(EFI_BOOT)) 
 		efi_memblock_x86_reserve_range();
 #endif
-	
+
 	/*
 	 * arch/x86/platform/ 폴더 아래에 x86_init을 설정해주는
 	 * 부분이 있다.
@@ -1009,7 +1009,7 @@ void __init setup_arch(char **cmdline_p)
 	// 12월 14일 분석 끝
 
 	iomem_resource.end = (1ULL << boot_cpu_data.x86_phys_bits) - 1;
-	
+
 	/*
 	 * BIOS에서 가저온 physical memory 정보를 바탕으로
 	 * 메모리 멥을 setup()한다. e820, e820_saved에 저장된다.
@@ -1024,22 +1024,22 @@ void __init setup_arch(char **cmdline_p)
 
 	/* update the e820_saved too */
 	e820_reserve_setup_data();
-	
+
 	copy_edd();
-	
- /* 
-  * 01F2/2	ALL	root_flags	If set, the root is mounted readonly
-  * use the "ro" or "rw" options on the comand line insted.
-  *
-  * boot_parmas.hdr.root_flags가 0일 때는 아마도 부트파람에서 "rw"
-  * 가 들어온것으로 예상된다.
-  */
+
+	/* 
+	 * 01F2/2	ALL	root_flags	If set, the root is mounted readonly
+	 * use the "ro" or "rw" options on the comand line insted.
+	 *
+	 * boot_parmas.hdr.root_flags가 0일 때는 아마도 부트파람에서 "rw"
+	 * 가 들어온것으로 예상된다.
+	 */
 	if (!boot_params.hdr.root_flags) /* root_flgs가 없으면*/
 		root_mountflags &= ~MS_RDONLY;
 	init_mm.start_code = (unsigned long) _text;
 	init_mm.end_code = (unsigned long) _etext;
 	init_mm.end_data = (unsigned long) _edata;
-	
+
 	/* 64k alignment slob space */
 	/* malloc 과 brk와의 관계
 	 * 참고답변 1.
@@ -1068,7 +1068,7 @@ void __init setup_arch(char **cmdline_p)
 	 *
 	 */
 	init_mm.brk = _brk_end;
-	
+
 	/*
 	 * __pa_symbol(_text) = __phys_addr_symbol(__phys_reloc_hide((unsigned long)(_text)))
 	 * => __phys_addr_symbol((unsigned long)(_text))
@@ -1176,12 +1176,12 @@ void __init setup_arch(char **cmdline_p)
 	 * http://blog.daum.net/english_100/80 참조
 	 *
 	 * struct resource {
-          resource_size_t start;   // start 와 end 는 이 리소스의 범위를 나타냄
-          resource_size_t end;
-          const char *name;
-          unsigned long flags;
-          struct resource *parent, *sibling, *child;
-	   };
+	 resource_size_t start;   // start 와 end 는 이 리소스의 범위를 나타냄
+	 resource_size_t end;
+	 const char *name;
+	 unsigned long flags;
+	 struct resource *parent, *sibling, *child;
+	 };
 
 	 * iomem_resource 는 resource 구조체 형 변수로서 io memory 리소스들의
 	 * 트리 구조상 루트 역할을 한다. 리소스를 트리에 삽입하는 방법은
@@ -1230,7 +1230,7 @@ void __init setup_arch(char **cmdline_p)
 #ifdef CONFIG_X86_32
 	if (ppro_with_ram_bug()) {
 		e820_update_range(0x70000000ULL, 0x40000ULL, E820_RAM,
-				  E820_RESERVED);
+				E820_RESERVED);
 		sanitize_e820_map(e820.map, ARRAY_SIZE(e820.map), &e820.nr_map);
 		printk(KERN_INFO "fixed physical RAM map:\n");
 		e820_print_map("bad_ppro");
@@ -1243,7 +1243,7 @@ void __init setup_arch(char **cmdline_p)
 	 * partially used pages are not usable - thus
 	 * we are rounding upwards:
 	 */
-    // e820mapdp에서 맨 마지막 Page Frame Number를 찾아온다.
+	// e820mapdp에서 맨 마지막 Page Frame Number를 찾아온다.
 	max_pfn = e820_end_of_ram_pfn();
 
 	/* update e820 for memory not covered by WB MTRRs */
