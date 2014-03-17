@@ -740,6 +740,8 @@ u64 __init early_reserve_e820(u64 size, u64 align)
 {
 	u64 addr;
 
+	//#define MEMBLOCK_ALLOC_ACCESSIBLE	0
+	//mptable이 저장된 주소가 addr에 저장됨.
 	addr = __memblock_alloc_base(size, align, MEMBLOCK_ALLOC_ACCESSIBLE);
 	if (addr) {
 		e820_update_range_saved(addr, size, E820_RAM, E820_RESERVED);

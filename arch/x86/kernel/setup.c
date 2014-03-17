@@ -1313,7 +1313,9 @@ void __init setup_arch(char **cmdline_p)
 		efi_reserve_boot_services();
 
 	/* 2014.03.01 ended. 여기서부터 하시면 되요... */
+	/* 2014.03.15 시작 */
 	/* preallocate 4k for mptable mpc */
+	// mptable을 위한 공간만 생성함.
 	early_reserve_e820_mpc_new();
 
 #ifdef CONFIG_X86_CHECK_BIOS_CORRUPTION
@@ -1327,6 +1329,8 @@ void __init setup_arch(char **cmdline_p)
 
 	reserve_real_mode();
 
+	// Sandy Bridge graphics 들 중에 추가 Page를 사용하는 칩을 위한
+	// reserve를 해준다.
 	trim_platform_memory_ranges();
 	trim_low_memory_range();
 

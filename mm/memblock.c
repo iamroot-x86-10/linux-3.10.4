@@ -100,6 +100,7 @@ static long __init_memblock memblock_overlaps_region(struct memblock_type *type,
  * RETURNS:
  * Found address on success, %0 on failure.
  */
+//args: 0, 0, 4096, 4, 64
 phys_addr_t __init_memblock memblock_find_in_range_node(phys_addr_t start,
 					phys_addr_t end, phys_addr_t size,
 					phys_addr_t align, int nid)
@@ -115,15 +116,22 @@ phys_addr_t __init_memblock memblock_find_in_range_node(phys_addr_t start,
 	start = max_t(phys_addr_t, start, PAGE_SIZE);
 	end = max(start, end);
 	// start = 4096
-	// end = 100000
+	// end = 100000 ISA_END_ADDRESS
 	
+	// i = 0;
+	// nid = 64;
+	//
 	for_each_free_mem_range_reverse(i, nid, &this_start, &this_end, NULL) {
+		/*clamp*/
 		this_start = clamp(this_start, start, end);
 		this_end = clamp(this_end, start, end);
 
+		// size 검사
 		if (this_end < size)
 			continue;
 
+		// 4byte로 align된 mptable을 새로 할당한 주소의 start가 반환.
+		// 이 영역은 reserved되어 있지 않은 영역이다.
 		cand = round_down(this_end - size, align);
 		if (cand >= this_start)
 			return cand;
@@ -663,6 +671,9 @@ void __init_memblock __next_free_mem_range_rev(u64 *idx, int nid,
 {
 	struct memblock_type *mem = &memblock.memory;
 	struct memblock_type *rsv = &memblock.reserved;
+	// ULLONG_MAX중 
+	// mi = 하위 32bit 사용
+	// ri = 상위 32bit 사용
 	int mi = *idx & 0xffffffff;
 	int ri = *idx >> 32;
 
@@ -774,6 +785,7 @@ int __init_memblock memblock_set_node(phys_addr_t base, phys_addr_t size,
 }
 #endif /* CONFIG_HAVE_MEMBLOCK_NODE_MAP */
 
+//args: 4096, 4, 0, 64
 static phys_addr_t __init memblock_alloc_base_nid(phys_addr_t size,
 					phys_addr_t align, phys_addr_t max_addr,
 					int nid)
@@ -784,9 +796,15 @@ static phys_addr_t __init memblock_alloc_base_nid(phys_addr_t size,
 		align = __alignof__(long long);
 
 	/* align @size to avoid excessive fragmentation on reserved array */
+	//round_up : 무조건 올림
+	//4097,4 ==> 4100
+	//4098,4 ==> 4100
 	size = round_up(size, align);
 
+	// found는 mptable의 크기를 저장할 수 있는 최초의 free memory 영역의 start
+	// 뒤에서부터 검사해서 최초의 free memory 영역이 된다.
 	found = memblock_find_in_range_node(0, max_addr, size, align, nid);
+	
 	if (found && !memblock_reserve(found, size))
 		return found;
 
@@ -800,6 +818,7 @@ phys_addr_t __init memblock_alloc_nid(phys_addr_t size, phys_addr_t align, int n
 
 phys_addr_t __init __memblock_alloc_base(phys_addr_t size, phys_addr_t align, phys_addr_t max_addr)
 {
+	//MAX_NUMNODES = 2^6 = 64
 	return memblock_alloc_base_nid(size, align, max_addr, MAX_NUMNODES);
 }
 
