@@ -620,9 +620,15 @@ kernel_physical_mapping_init(unsigned long start,
 		pgd_t *pgd = pgd_offset_k(start);
 		pud_t *pud;
 
+		//PGDIR_MASK = ~ ((1 << PGDIR_SHIFT) - 1)
+		//PGDIR_SHIFT = 2*PUD(9) + PMD(9) + PTE(12) = 39
+		//PGDIR_SIZE = 1 << PGDIR_SHIFT
+		//next => start가 위치한 PGDIR의 다음 PGDIR의 시작위치
 		next = (start & PGDIR_MASK) + PGDIR_SIZE;
 
+		//pgd에 pud의 주소가 있으면
 		if (pgd_val(*pgd)) {
+			//pgd에서 pud의 주소를 얻어온다.
 			pud = (pud_t *)pgd_page_vaddr(*pgd);
 			last_map_addr = phys_pud_init(pud, __pa(start),
 						 __pa(end), page_size_mask);

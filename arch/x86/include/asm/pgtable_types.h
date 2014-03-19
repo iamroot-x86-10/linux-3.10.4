@@ -204,6 +204,7 @@
 #include <linux/types.h>
 
 /* PTE_PFN_MASK extracts the PFN from a (pte|pmd|pud|pgd)val_t */
+// PGD/PUD/PMD/PTE 전체에서 Page Frame Number를 계산
 #define PTE_PFN_MASK		((pteval_t)PHYSICAL_PAGE_MASK)
 
 /* PTE_FLAGS_MASK extracts the flags from a (pte|pmd|pud|pgd)val_t */
