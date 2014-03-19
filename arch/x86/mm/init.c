@@ -37,6 +37,10 @@ static bool __initdata can_use_brk_pgt = true;
  *
  * for detailed information.
  */
+/* 
+ * page를 num만큼 할당해서 할당한 페이지를 0으로 초기화 한뒤에
+ * 시작page 의 virtual address 를 넘겨준다.
+ */
 __ref void *alloc_low_pages(unsigned int num)
 {
 	unsigned long pfn;
@@ -50,6 +54,7 @@ __ref void *alloc_low_pages(unsigned int num)
 						__GFP_ZERO, order);
 	}
 
+	//pgt_buf_start=pgt_buf_end = 0x01fda, num = 1 pgt_buf_top = 0x01fdf
 	if ((pgt_buf_end + num) > pgt_buf_top || !can_use_brk_pgt) {
 		unsigned long ret;
 		if (min_pfn_mapped >= max_pfn_mapped)
@@ -62,6 +67,7 @@ __ref void *alloc_low_pages(unsigned int num)
 		memblock_reserve(ret, PAGE_SIZE * num);
 		pfn = ret >> PAGE_SHIFT;
 	} else {
+		//영주꺼 참고용 pfn = 0x01fda, pgt_buf_end + num= 0x01fdb
 		pfn = pgt_buf_end;
 		pgt_buf_end += num;
 		printk(KERN_DEBUG "BRK [%#010lx, %#010lx] PGTABLE\n",
@@ -95,6 +101,7 @@ void  __init early_alloc_pgt_buf(void)
 	 *                 start             top
 	 *                 end
 	 */
+	 // pgt_buf_start = pgt_buf_end = 0x01fda, pgt_buf_top = 0x01fdf
 	pgt_buf_start = base >> PAGE_SHIFT;
 	pgt_buf_end = pgt_buf_start;
 	pgt_buf_top = pgt_buf_start + (tables >> PAGE_SHIFT);

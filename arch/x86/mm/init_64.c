@@ -601,6 +601,7 @@ phys_pud_init(pud_t *pud_page, unsigned long addr, unsigned long end,
 	return last_map_addr;
 }
 
+//arg start = 0, end = 1MB, page_size_mask = 0
 unsigned long __meminit
 kernel_physical_mapping_init(unsigned long start,
 			     unsigned long end,
@@ -630,11 +631,14 @@ kernel_physical_mapping_init(unsigned long start,
 		if (pgd_val(*pgd)) {
 			//pgd에서 pud의 주소를 얻어온다.
 			pud = (pud_t *)pgd_page_vaddr(*pgd);
+			//우선 지나가고 다음에 보는걸 
 			last_map_addr = phys_pud_init(pud, __pa(start),
 						 __pa(end), page_size_mask);
 			continue;
 		}
 
+		//BRK(pgt_buf_end)에서 page 1개를 얻어온다.
+		//2014.3.20. 여기까지 왔어요.
 		pud = alloc_low_page();
 		last_map_addr = phys_pud_init(pud, __pa(start), __pa(end),
 						 page_size_mask);
