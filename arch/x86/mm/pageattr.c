@@ -55,6 +55,9 @@ static DEFINE_SPINLOCK(cpa_lock);
 #ifdef CONFIG_PROC_FS
 static unsigned long direct_pages_count[PG_LEVEL_NUM];
 
+/*
+ * 각 level = 0, 4K, 2M, 1G 별로 할당한 page의 개수를 누적한다.
+ */
 void update_page_count(int level, unsigned long pages)
 {
 	/* Protect against CPA */

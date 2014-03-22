@@ -404,6 +404,12 @@ void __init cleanup_highmap(void)
 	}
 }
 
+/****************************************
+ * pte_page = alloc_page를 통해서 얻어온 addr,
+ * addr = start = 0
+ * end = 1MB
+ * prot = PAGE_KERNEL
+ ****************************************/
 static unsigned long __meminit
 phys_pte_init(pte_t *pte_page, unsigned long addr, unsigned long end,
 	      pgprot_t prot)
@@ -412,10 +418,12 @@ phys_pte_init(pte_t *pte_page, unsigned long addr, unsigned long end,
 	unsigned long last_map_addr = end;
 	int i;
 
-	pte_t *pte = pte_page + pte_index(addr);
+	pte_t *pte = pte_page + pte_index(addr); //pte의 첫번째 entry
 
+	//PTRS_PER_PTE = PTE의 전체 entry 개수 = 512
 	for (i = pte_index(addr); i < PTRS_PER_PTE; i++, addr = next, pte++) {
 		next = (addr & PAGE_MASK) + PAGE_SIZE;
+		//addr = 0
 		if (addr >= end) {
 			if (!after_bootmem &&
 			    !e820_any_mapped(addr & PAGE_MASK, next, E820_RAM) &&
@@ -430,7 +438,9 @@ phys_pte_init(pte_t *pte_page, unsigned long addr, unsigned long end,
 		 * pagetable pages as RO. So assume someone who pre-setup
 		 * these mappings are more intelligent.
 		 */
+		//pte_val(*pte) = 0 alloc_page를 통해서 만들었다.
 		if (pte_val(*pte)) {
+			//after_bootmem = 0
 			if (!after_bootmem)
 				pages++;
 			continue;
@@ -440,15 +450,25 @@ phys_pte_init(pte_t *pte_page, unsigned long addr, unsigned long end,
 			printk("   pte=%p addr=%lx pte=%016lx\n",
 			       pte, addr, pfn_pte(addr >> PAGE_SHIFT, PAGE_KERNEL).pte);
 		pages++;
+		//현재 pte에 addr(주소) | prot(권한) 을 설정한다.
 		set_pte(pte, pfn_pte(addr >> PAGE_SHIFT, prot));
-		last_map_addr = (addr & PAGE_MASK) + PAGE_SIZE;
+		last_map_addr = (addr & PAGE_MASK) + PAGE_SIZE; //다음 page 의 시작주소
 	}
 
+	//PG_LEVEL_4K, pages = 1
+	//2014.3.21.까지 
 	update_page_count(PG_LEVEL_4K, pages);
 
 	return last_map_addr;
 }
 
+/****************************************
+ * pmd = alloc_page를 통해서 얻어온 addr,
+ * address = start = 0
+ * end = 1MB
+ * page_size_mask = 0
+ * prot = PAGE_KERNEL
+ ****************************************/
 static unsigned long __meminit
 phys_pmd_init(pmd_t *pmd_page, unsigned long address, unsigned long end,
 	      unsigned long page_size_mask, pgprot_t prot)
@@ -456,14 +476,19 @@ phys_pmd_init(pmd_t *pmd_page, unsigned long address, unsigned long end,
 	unsigned long pages = 0, next;
 	unsigned long last_map_addr = end;
 
-	int i = pmd_index(address);
+	int i = pmd_index(address); //pmd의 첫번째 entry
 
+	//PTRS_PER_PMD = PMD의 전체 entry 개수 = 512
 	for (; i < PTRS_PER_PMD; i++, address = next) {
+		//pmd_page = alloc_page를 통해서 얻어온 page
+		//pmd_t pmd_page = pmd[pmd_index(addresss)]를 나타낸다.
 		pmd_t *pmd = pmd_page + pmd_index(address);
 		pte_t *pte;
 		pgprot_t new_prot = prot;
 
+		//next = pmd[pmd_index(address)+1];
 		next = (address & PMD_MASK) + PMD_SIZE;
+		//addr = 0, end = 1MB
 		if (address >= end) {
 			if (!after_bootmem &&
 			    !e820_any_mapped(address & PMD_MASK, next, E820_RAM) &&
@@ -472,6 +497,7 @@ phys_pmd_init(pmd_t *pmd_page, unsigned long address, unsigned long end,
 			continue;
 		}
 
+		//new page 이므로 값이 0이다.
 		if (pmd_val(*pmd)) {
 			if (!pmd_large(*pmd)) {
 				spin_lock(&init_mm.page_table_lock);
@@ -502,6 +528,7 @@ phys_pmd_init(pmd_t *pmd_page, unsigned long address, unsigned long end,
 			new_prot = pte_pgprot(pte_clrhuge(*(pte_t *)pmd));
 		}
 
+		//page_size_mask = 0
 		if (page_size_mask & (1<<PG_LEVEL_2M)) {
 			pages++;
 			spin_lock(&init_mm.page_table_lock);
@@ -513,10 +540,13 @@ phys_pmd_init(pmd_t *pmd_page, unsigned long address, unsigned long end,
 			continue;
 		}
 
+		//pte를 새로 생성한다. BRK에서 받아온다.
 		pte = alloc_low_page();
+		//page_size_mask 가 없다. 무슨 의미인지 알아봐야 할듯 
 		last_map_addr = phys_pte_init(pte, address, end, new_prot);
 
 		spin_lock(&init_mm.page_table_lock);
+		//pmd에 pte의 주소값과 권한을 설정한다. 
 		pmd_populate_kernel(&init_mm, pmd, pte);
 		spin_unlock(&init_mm.page_table_lock);
 	}
@@ -524,20 +554,27 @@ phys_pmd_init(pmd_t *pmd_page, unsigned long address, unsigned long end,
 	return last_map_addr;
 }
 
+
+//arg : _pa(_va(addr = start = 0)), _pa(_va(end = 1Mb)), page_size_mask = 0
 static unsigned long __meminit
 phys_pud_init(pud_t *pud_page, unsigned long addr, unsigned long end,
 			 unsigned long page_size_mask)
 {
 	unsigned long pages = 0, next;
-	unsigned long last_map_addr = end;
-	int i = pud_index(addr);
+	unsigned long last_map_addr = end; //1mb
+	int i = pud_index(addr);  // pud의 첫번째 entry
 
+	//PTRS_PER_PUD = PUD에 존재하는 전체 entry 개수 = 512
 	for (; i < PTRS_PER_PUD; i++, addr = next) {
+		//pud_page = BRK를 통해서 얻어온 page 
+		//pud_t * pud_page = pud[pud_index(addr)]임을 나타낸다.
 		pud_t *pud = pud_page + pud_index(addr);
 		pmd_t *pmd;
 		pgprot_t prot = PAGE_KERNEL;
 
+		//next = pud[pud_index(addr)+1];
 		next = (addr & PUD_MASK) + PUD_SIZE;
+		//addr = 0, end = 1MB
 		if (addr >= end) {
 			if (!after_bootmem &&
 			    !e820_any_mapped(addr & PUD_MASK, next, E820_RAM) &&
@@ -545,7 +582,7 @@ phys_pud_init(pud_t *pud_page, unsigned long addr, unsigned long end,
 				set_pud(pud, __pud(0));
 			continue;
 		}
-
+		//new page 이므로 값이 0이다.
 		if (pud_val(*pud)) {
 			if (!pud_large(*pud)) {
 				pmd = pmd_offset(pud, 0);
@@ -574,7 +611,7 @@ phys_pud_init(pud_t *pud_page, unsigned long addr, unsigned long end,
 			}
 			prot = pte_pgprot(pte_clrhuge(*(pte_t *)pud));
 		}
-
+		//page_size_mask = 0
 		if (page_size_mask & (1<<PG_LEVEL_1G)) {
 			pages++;
 			spin_lock(&init_mm.page_table_lock);
@@ -586,6 +623,7 @@ phys_pud_init(pud_t *pud_page, unsigned long addr, unsigned long end,
 			continue;
 		}
 
+		//pmd를 새로 생성한다. BRK에서 받아온다. 
 		pmd = alloc_low_page();
 		last_map_addr = phys_pmd_init(pmd, addr, end, page_size_mask,
 					      prot);
@@ -617,7 +655,7 @@ kernel_physical_mapping_init(unsigned long start,
 	addr = start;
 
 	for (; start < end; start = next) {
-		// if start = 0, pgd_offset_k(start) = 256 + 16 = 272
+		// if start = _va(start = 0), pgd_offset_k(_va(start=0)) = 256 + 16 = 272
 		pgd_t *pgd = pgd_offset_k(start);
 		pud_t *pud;
 
@@ -640,6 +678,7 @@ kernel_physical_mapping_init(unsigned long start,
 		//BRK(pgt_buf_end)에서 page 1개를 얻어온다.
 		//2014.3.20. 여기까지 왔어요.
 		pud = alloc_low_page();
+		//_va(start = 0), _va(end = 1MB), page_size_mask = 0
 		last_map_addr = phys_pud_init(pud, __pa(start), __pa(end),
 						 page_size_mask);
 
