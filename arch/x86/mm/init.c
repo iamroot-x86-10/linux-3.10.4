@@ -383,6 +383,8 @@ unsigned long __init_refok init_memory_mapping(unsigned long start,
 		ret = kernel_physical_mapping_init(mr[i].start, mr[i].end,
 						   mr[i].page_size_mask);
 
+	// start >> PAGE_SHIT = 0, ret >> PAGE_SHIFT = 256
+	// 2014. 3. 22. 여기까지 
 	add_pfn_range_mapped(start >> PAGE_SHIFT, ret >> PAGE_SHIFT);
 
 	return ret >> PAGE_SHIFT;

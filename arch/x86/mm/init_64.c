@@ -178,11 +178,14 @@ __setup("noexec32=", nonx32_setup);
  * When memory was added/removed make sure all the processes MM have
  * suitable PGD entries in the local PGD level page.
  */
+//start = __va(0), end = __va(end = 1MB - 1)
 void sync_global_pgds(unsigned long start, unsigned long end)
 {
 	unsigned long address;
 
+	//PGDIR_SIZE = 512GB
 	for (address = start; address <= end; address += PGDIR_SIZE) {
+		//pgd_offset_k(address) = 272 273번째 entry
 		const pgd_t *pgd_ref = pgd_offset_k(address);
 		struct page *page;
 
@@ -190,6 +193,7 @@ void sync_global_pgds(unsigned long start, unsigned long end)
 			continue;
 
 		spin_lock(&pgd_lock);
+		//RDx86: remote debugging이 가능해지면 보는걸로 
 		list_for_each_entry(page, &pgd_list, lru) {
 			pgd_t *pgd;
 			spinlock_t *pgt_lock;
@@ -404,12 +408,17 @@ void __init cleanup_highmap(void)
 	}
 }
 
-/****************************************
- * pte_page = alloc_page를 통해서 얻어온 addr,
+/***************************************************************
+ * pte_page = alloc_page를 통해서 얻어온 addr
  * addr = start = 0
  * end = 1MB
  * prot = PAGE_KERNEL
- ****************************************/
+ * phy_pte_init pte_t *으로 들어온 page의 값을 초기화한다.
+ *              만약, addr이 end를 초과하면 해당 부분을 e820map과
+ *              비교하여 겹치면 그냥 놔두고 
+ *              겹치면 0으로 setting한다.(page 권한 0)
+ * return : last_map_addr -> end까지의 page index
+ ****************************************************************/
 static unsigned long __meminit
 phys_pte_init(pte_t *pte_page, unsigned long addr, unsigned long end,
 	      pgprot_t prot)
@@ -422,10 +431,18 @@ phys_pte_init(pte_t *pte_page, unsigned long addr, unsigned long end,
 
 	//PTRS_PER_PTE = PTE의 전체 entry 개수 = 512
 	for (i = pte_index(addr); i < PTRS_PER_PTE; i++, addr = next, pte++) {
-		next = (addr & PAGE_MASK) + PAGE_SIZE;
-		//addr = 0
+		next = (addr & PAGE_MASK) + PAGE_SIZE; //다음 page의 시작 주소
+		// 1. addr = 0
+		// 2. addr = 4k
+		// ....
+		// 257. addr = 1MB, end = 0x100000
+		// ... 512. addr = 2MB - 4K, end = 0x100000
 		if (addr >= end) {
+			// after_bootmem = 0, 
 			if (!after_bootmem &&
+			    // arg start = 1MB, next = 1MB + 4K, type = E820_RAM
+			    // e820 영역(E820_RAM, E820_RESERVED_KERN)과 겹치면 놔두고,
+			    // 겹치지 않으면, 0(page가 존재하지 않음)으로 셋팅한다.
 			    !e820_any_mapped(addr & PAGE_MASK, next, E820_RAM) &&
 			    !e820_any_mapped(addr & PAGE_MASK, next, E820_RESERVED_KERN))
 				set_pte(pte, __pte(0));
@@ -439,6 +456,10 @@ phys_pte_init(pte_t *pte_page, unsigned long addr, unsigned long end,
 		 * these mappings are more intelligent.
 		 */
 		//pte_val(*pte) = 0 alloc_page를 통해서 만들었다.
+		// 1. pte[0] = 0
+		// 2. pte[1] = 0 
+		// ....
+		// 256. pte[255] = 0, 이 이상은 이 코드를 타지 못함.
 		if (pte_val(*pte)) {
 			//after_bootmem = 0
 			if (!after_bootmem)
@@ -452,13 +473,15 @@ phys_pte_init(pte_t *pte_page, unsigned long addr, unsigned long end,
 		pages++;
 		//현재 pte에 addr(주소) | prot(권한) 을 설정한다.
 		set_pte(pte, pfn_pte(addr >> PAGE_SHIFT, prot));
-		last_map_addr = (addr & PAGE_MASK) + PAGE_SIZE; //다음 page 의 시작주소
+		last_map_addr = (addr & PAGE_MASK) + PAGE_SIZE; //다음 page 의 시작주소, 1MB
 	}
 
 	//PG_LEVEL_4K, pages = 1
 	//2014.3.21.까지 
+	//direct_pages_count[PG_LEVEL_4K] += pages = 256
 	update_page_count(PG_LEVEL_4K, pages);
 
+	//last_map_addr = 1MB
 	return last_map_addr;
 }
 
@@ -481,14 +504,19 @@ phys_pmd_init(pmd_t *pmd_page, unsigned long address, unsigned long end,
 	//PTRS_PER_PMD = PMD의 전체 entry 개수 = 512
 	for (; i < PTRS_PER_PMD; i++, address = next) {
 		//pmd_page = alloc_page를 통해서 얻어온 page
-		//pmd_t pmd_page = pmd[pmd_index(addresss)]를 나타낸다.
+		//pmd_t pmd = pmd[pmd_index(addresss)]를 나타낸다.
+		//1. pmd_index(address) = 0
+		//2. pmd_index(address+1) = 2MB
 		pmd_t *pmd = pmd_page + pmd_index(address);
 		pte_t *pte;
 		pgprot_t new_prot = prot;
 
-		//next = pmd[pmd_index(address)+1];
+		//next = pmd[pmd_index(address+1)];
 		next = (address & PMD_MASK) + PMD_SIZE;
 		//addr = 0, end = 1MB
+		//첫번째 index만 셋팅하고 1...511는
+		//e820_map과 비교하여 있으면 놔두고,
+		//그렇지 않으면 0으로 초기화한다.(page권한 0)
 		if (address >= end) {
 			if (!after_bootmem &&
 			    !e820_any_mapped(address & PMD_MASK, next, E820_RAM) &&
@@ -543,15 +571,18 @@ phys_pmd_init(pmd_t *pmd_page, unsigned long address, unsigned long end,
 		//pte를 새로 생성한다. BRK에서 받아온다.
 		pte = alloc_low_page();
 		//page_size_mask 가 없다. 무슨 의미인지 알아봐야 할듯 
-		last_map_addr = phys_pte_init(pte, address, end, new_prot);
+		//1. last_map_addr = 1MB
+		last_map_addr = phys_pte_init(pte, address, end, new_prot); 
 
 		spin_lock(&init_mm.page_table_lock);
 		//pmd에 pte의 주소값과 권한을 설정한다. 
 		pmd_populate_kernel(&init_mm, pmd, pte);
 		spin_unlock(&init_mm.page_table_lock);
 	}
+	//direct_pages_count[PG_LEVEL_2M] += 0;
 	update_page_count(PG_LEVEL_2M, pages);
-	return last_map_addr;
+	// last_map_addr = 1MB
+	return last_map_addr; 
 }
 
 
@@ -634,9 +665,10 @@ phys_pud_init(pud_t *pud_page, unsigned long addr, unsigned long end,
 	}
 	__flush_tlb_all();
 
+	//direct_pages_count[PG_LEVEL_1G] += 0;
 	update_page_count(PG_LEVEL_1G, pages);
 
-	return last_map_addr;
+	return last_map_addr;	//last_map_addr = 1MB
 }
 
 //arg start = 0, end = 1MB, page_size_mask = 0
@@ -688,6 +720,8 @@ kernel_physical_mapping_init(unsigned long start,
 		pgd_changed = true;
 	}
 
+	// addr = _va(start=0), _va(end = 1MB), 
+        //__va(0xffff880000000000 + start);
 	if (pgd_changed)
 		sync_global_pgds(addr, end - 1);
 

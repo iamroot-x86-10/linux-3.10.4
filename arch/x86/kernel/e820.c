@@ -52,6 +52,7 @@ EXPORT_SYMBOL(pci_mem_start);
  * This function checks if any part of the range <start,end> is mapped
  * with type.
  */
+// arg start = 1MB, next = 1MB + 4K, type = E820_RMA
 int
 e820_any_mapped(u64 start, u64 end, unsigned type)
 {
@@ -62,6 +63,10 @@ e820_any_mapped(u64 start, u64 end, unsigned type)
 
 		if (type && ei->type != type)
 			continue;
+		// |----------------------------------------------------| e820_map
+		//                         start    end
+		//                         1MB      1MB+4K
+		// ei와 겹치는 부분이 없으면 continue
 		if (ei->addr >= end || ei->addr + ei->size <= start)
 			continue;
 		return 1;
