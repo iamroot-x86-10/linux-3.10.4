@@ -3,6 +3,7 @@
 
 #ifdef CONFIG_EFI
 #include <linux/numa.h>
+// E820MAX = 128 + 3 * MAX_NUMNODES (1 << 6 = 64) = 320
 #define E820_X_MAX (E820MAX + 3 * MAX_NUMNODES)
 #else	/* ! CONFIG_EFI */
 #define E820_X_MAX E820MAX

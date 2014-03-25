@@ -1244,6 +1244,7 @@ void __init setup_arch(char **cmdline_p)
 	 * we are rounding upwards:
 	 */
 	// e820mapdp에서 맨 마지막 Page Frame Number를 찾아온다.
+	// max_pfn = last_pfn = 0xdbcf7 <- youngjoo 8GB 기준
 	max_pfn = e820_end_of_ram_pfn();
 
 	/* update e820 for memory not covered by WB MTRRs */

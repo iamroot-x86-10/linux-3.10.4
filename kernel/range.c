@@ -7,6 +7,9 @@
 #include <linux/string.h>
 #include <linux/range.h>
 
+// *range = pfn_mapped az=  E820MAX = 128 + 3 * MAX_NUMNODES (1 << 6 = 64) = 320
+// nr_range = nr_pfn_mapped = 0, start = start_pfn = 0, end = end_pfn = 256
+// 0 ~ ISA_ADDRESS (1MB)까지의 영역을 하나의 range로 할당, return nr_rage = 1
 int add_range(struct range *range, int az, int nr_range, u64 start, u64 end)
 {
 	if (start >= end)
@@ -24,6 +27,8 @@ int add_range(struct range *range, int az, int nr_range, u64 start, u64 end)
 	return nr_range;
 }
 
+// *range = pfn_mapped az=  E820MAX = 128 + 3 * MAX_NUMNODES (1 << 6 = 64) = 320
+// nr_range = nr_pfn_mapped = 0, start = start_pfn = 0, end = end_pfn = 256
 int add_range_with_merge(struct range *range, int az, int nr_range,
 		     u64 start, u64 end)
 {
@@ -33,6 +38,7 @@ int add_range_with_merge(struct range *range, int az, int nr_range,
 		return nr_range;
 
 	/* get new start/end: */
+	//nr_range = 0 
 	for (i = 0; i < nr_range; i++) {
 		u64 common_start, common_end;
 
@@ -121,13 +127,18 @@ static int cmp_range(const void *x1, const void *x2)
 	return start1 - start2;
 }
 
+// pfn_mapped , E820MAX = 320
 int clean_sort_range(struct range *range, int az)
 {
+	// k = 319, nr_range = 320
 	int i, j, k = az - 1, nr_range = az;
 
+	// k = 319, range[0].end에만 값이 있다.
 	for (i = 0; i < k; i++) {
 		if (range[i].end)
 			continue;
+		// i = 1, j = 319, 맨마지막 end가 있는 위치를 찾아서 k에 할당.
+		// 아니면 j = i
 		for (j = k; j > i; j--) {
 			if (range[j].end) {
 				k = j;
@@ -136,6 +147,7 @@ int clean_sort_range(struct range *range, int az)
 		}
 		if (j == i)
 			break;
+
 		range[i].start = range[k].start;
 		range[i].end   = range[k].end;
 		range[k].start = 0;
@@ -143,6 +155,7 @@ int clean_sort_range(struct range *range, int az)
 		k--;
 	}
 	/* count it */
+	// nr_range의 개수를 찾는다.
 	for (i = 0; i < az; i++) {
 		if (!range[i].end) {
 			nr_range = i;
@@ -151,8 +164,11 @@ int clean_sort_range(struct range *range, int az)
 	}
 
 	/* sort them */
+	//range = pfn_mapped, nr_ragnge = 1 , sizeof(strunct range), fn(cmp_range) 
+	//in lib/sort.c
 	sort(range, nr_range, sizeof(struct range), cmp_range, NULL);
 
+	//return nr_range = 1
 	return nr_range;
 }
 

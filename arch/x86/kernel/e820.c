@@ -770,10 +770,12 @@ u64 __init early_reserve_e820(u64 size, u64 align)
 /*
  * Find the highest page frame number we have available
  */
+// e820에 있는 (=System에 있는) 맨 마지막 pfn을 찾는다. 
 static unsigned long __init e820_end_pfn(unsigned long limit_pfn, unsigned type)
 {
 	int i;
 	unsigned long last_pfn = 0;
+	// MAX_ARCH_PFN = 1 << 34 = 16GB page number
 	unsigned long max_arch_pfn = MAX_ARCH_PFN;
 
 	for (i = 0; i < e820.nr_map; i++) {
@@ -802,13 +804,17 @@ static unsigned long __init e820_end_pfn(unsigned long limit_pfn, unsigned type)
 
 	printk(KERN_INFO "e820: last_pfn = %#lx max_arch_pfn = %#lx\n",
 			 last_pfn, max_arch_pfn);
+	// last_pfn = 0xdbcf7
 	return last_pfn;
 }
 unsigned long __init e820_end_of_ram_pfn(void)
 {
-	//# define MAX_ARCH_PFN MAXMEM>>PAGE_SHIFT
-	//PAGE_SHIFT 12
-	//MAX
+	// #define MAX_ARCH_PFN MAXMEM>>PAGE_SHIFT
+	// #define MAXMEM  1 << MAX_PHYSMEM_BITS
+	// #define MAX_PHYSMEM_BITS	46
+	// PAGE_SHIFT 12
+	// MAX_ARCH_PFN = 1 << 34 = 16GB page number
+	// 0xdbcf7
 	return e820_end_pfn(MAX_ARCH_PFN, E820_RAM);
 }
 
