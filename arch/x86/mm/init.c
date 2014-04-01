@@ -135,7 +135,7 @@ static int page_size_mask;
 
 static void __init probe_page_size_mask(void)
 {
-	//
+	// 현재 서버는 CONFIG_DIRECT_GBPAGES=y로 설정되어있으나, cpu가 제공하지 않음(셀러론)
 	init_gbpages();
 
 #if !defined(CONFIG_DEBUG_PAGEALLOC) && !defined(CONFIG_KMEMCHECK)
@@ -192,17 +192,23 @@ static void __init_refok adjust_range_page_size_mask(struct map_range *mr,
 {
 	int i;
 
+	/* probe_page_size_mask()에서 현재 서버 기준에서 1G는 하지 못하고, 2MB 페이징은 가능한 상태이다. */
 	for (i = 0; i < nr_range; i++) {
 		if ((page_size_mask & (1<<PG_LEVEL_2M)) &&
 		    !(mr[i].page_size_mask & (1<<PG_LEVEL_2M))) {
 			unsigned long start = round_down(mr[i].start, PMD_SIZE);
+			// mr[0].stat = 0, start는 0이 된다.
 			unsigned long end = round_up(mr[i].end, PMD_SIZE);
+			// mr[0].end = 100000, end = 2MB이 된다.
 
 #ifdef CONFIG_X86_32
 			if ((end >> PAGE_SHIFT) > max_low_pfn)
 				continue;
 #endif
 
+			/* 2014.04.01 재복습 및 adjust_range_page_size_mask() 분석 */
+			// 2014.04.01 memblock.memory를 출력해보고,,, start(0)이 왜 regions에서
+			// 검색되지 않는지를 찾는중...
 			if (memblock_is_region_memory(start, end - start))
 				mr[i].page_size_mask |= 1<<PG_LEVEL_2M;
 		}
@@ -229,6 +235,7 @@ static int __meminit split_mem_range(struct map_range *mr, int nr_range,
 	limit_pfn = PFN_DOWN(end);
 
 	/* head if not big page alignment ? */
+	// #1: ptn = start_pfn = 0
 	pfn = start_pfn = PFN_DOWN(start);
 #ifdef CONFIG_X86_32
 	/*
@@ -246,17 +253,18 @@ static int __meminit split_mem_range(struct map_range *mr, int nr_range,
 	end_pfn = round_up(pfn, PFN_DOWN(PMD_SIZE));
 #endif
 	if (end_pfn > limit_pfn)
+		// #1: end_pfn = limit_pfn = 256
 		end_pfn = limit_pfn;
 	if (start_pfn < end_pfn) {
+		// #1: nr_range = 1
 		nr_range = save_mr(mr, nr_range, start_pfn, end_pfn, 0);
-		//nr_range = 1
+		// #1: pfn = 256
 		pfn = end_pfn;
-		//pfn = 256
 	}
 
 	/* big page (2M) range */
-	start_pfn = round_up(pfn, PFN_DOWN(PMD_SIZE));
 	// #1: start_pfn = 512
+	start_pfn = round_up(pfn, PFN_DOWN(PMD_SIZE));
 #ifdef CONFIG_X86_32
 	end_pfn = round_down(limit_pfn, PFN_DOWN(PMD_SIZE));
 #else /* CONFIG_X86_64 */
@@ -304,6 +312,8 @@ static int __meminit split_mem_range(struct map_range *mr, int nr_range,
 
 	/*
 	 * after_bootmem을 위한 mem_init()의 호출여부를 알 수 없음...
+	 * 14.4.1 추가
+	 *	- 아직 after_bootmem을 세팅하지 않았음.
 	 */
 	if (!after_bootmem)
 		adjust_range_page_size_mask(mr, nr_range);
@@ -383,6 +393,8 @@ unsigned long __init_refok init_memory_mapping(unsigned long start,
 	       start, end - 1);
 
 	memset(mr, 0, sizeof(mr));
+	/* 2014.04.01 재복습 및 adjust_range_page_size_mask() 분석
+	 * 다시 들어가야함... memblock관련 처리 안됨 */
 	nr_range = split_mem_range(mr, 0, start, end);
 	// #1: nr_range = 1
 
@@ -450,6 +462,11 @@ void __init init_mem_mapping(void)
 	unsigned long mapped_ram_size = 0;
 	unsigned long new_mapped_ram_size;
 
+	/* 
+	 * probe_page_size_mask() 에서 아래의 3가지 사항을 검사하고, 가능하면 enable한다.
+	 * gbpage enable.
+	 * page size extention enable.
+	 * page global enable. */
 	probe_page_size_mask();
 
 #ifdef CONFIG_X86_64

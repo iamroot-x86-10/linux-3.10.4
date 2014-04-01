@@ -953,11 +953,14 @@ int __init_memblock memblock_is_memory(phys_addr_t addr)
  */
 int __init_memblock memblock_is_region_memory(phys_addr_t base, phys_addr_t size)
 {
+	/* memblock_search()는 memblock.memory 배열에서 base가 속한 엔트리의 index를 반환 */
 	int idx = memblock_search(&memblock.memory, base);
 	phys_addr_t end = base + memblock_cap_size(base, &size);
+	/// end = base(0) + memblock_cap_size(2MB) = 0x200000;
 
 	if (idx == -1)
 		return 0;
+
 	return memblock.memory.regions[idx].base <= base &&
 		(memblock.memory.regions[idx].base +
 		 memblock.memory.regions[idx].size) >= end;
