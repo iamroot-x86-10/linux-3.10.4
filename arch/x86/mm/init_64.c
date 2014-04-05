@@ -193,7 +193,6 @@ void sync_global_pgds(unsigned long start, unsigned long end)
 			continue;
 
 		spin_lock(&pgd_lock);
-		//RDx86: remote debugging이 가능해지면 보는걸로 
 		list_for_each_entry(page, &pgd_list, lru) {
 			pgd_t *pgd;
 			spinlock_t *pgt_lock;
@@ -473,12 +472,13 @@ phys_pte_init(pte_t *pte_page, unsigned long addr, unsigned long end,
 		pages++;
 		//현재 pte에 addr(주소) | prot(권한) 을 설정한다.
 		set_pte(pte, pfn_pte(addr >> PAGE_SHIFT, prot));
-		last_map_addr = (addr & PAGE_MASK) + PAGE_SIZE; //다음 page 의 시작주소, 1MB
+		last_map_addr = (addr & PAGE_MASK) + PAGE_SIZE;
 	}
 
 	//PG_LEVEL_4K, pages = 1
 	//2014.3.21.까지 
-	//direct_pages_count[PG_LEVEL_4K] += pages = 256
+	//#1: direct_pages_count[PG_LEVEL_4K] += pages = 256
+	//#1: 4K레벨 페이징으로 256개의 page가 할당되었다는 의미.
 	update_page_count(PG_LEVEL_4K, pages);
 
 	//last_map_addr = 1MB
@@ -486,7 +486,7 @@ phys_pte_init(pte_t *pte_page, unsigned long addr, unsigned long end,
 }
 
 /****************************************
- * pmd = alloc_page를 통해서 얻어온 addr,
+ * pmd = alloc_page를 통해서 얻어온 addr, ==> 0xffff880001c74000
  * address = start = 0
  * end = 1MB
  * page_size_mask = 0
@@ -570,7 +570,7 @@ phys_pmd_init(pmd_t *pmd_page, unsigned long address, unsigned long end,
 
 		//pte를 새로 생성한다. BRK에서 받아온다.
 		pte = alloc_low_page();
-		//page_size_mask 가 없다. 무슨 의미인지 알아봐야 할듯 
+		//#1 pte = 0xffff880001c75000
 		//1. last_map_addr = 1MB
 		last_map_addr = phys_pte_init(pte, address, end, new_prot); 
 
@@ -592,7 +592,7 @@ phys_pud_init(pud_t *pud_page, unsigned long addr, unsigned long end,
 			 unsigned long page_size_mask)
 {
 	unsigned long pages = 0, next;
-	unsigned long last_map_addr = end; //1mb
+	unsigned long last_map_addr = end; // #1: 1mb
 	int i = pud_index(addr);  // pud의 첫번째 entry
 
 	//PTRS_PER_PUD = PUD에 존재하는 전체 entry 개수 = 512
@@ -642,7 +642,7 @@ phys_pud_init(pud_t *pud_page, unsigned long addr, unsigned long end,
 			}
 			prot = pte_pgprot(pte_clrhuge(*(pte_t *)pud));
 		}
-		//page_size_mask = 0
+		//#1: page_size_mask = 0
 		if (page_size_mask & (1<<PG_LEVEL_1G)) {
 			pages++;
 			spin_lock(&init_mm.page_table_lock);
@@ -656,6 +656,7 @@ phys_pud_init(pud_t *pud_page, unsigned long addr, unsigned long end,
 
 		//pmd를 새로 생성한다. BRK에서 받아온다. 
 		pmd = alloc_low_page();
+		//#1 pmd = 0xffff880001c74000
 		last_map_addr = phys_pmd_init(pmd, addr, end, page_size_mask,
 					      prot);
 
@@ -671,7 +672,7 @@ phys_pud_init(pud_t *pud_page, unsigned long addr, unsigned long end,
 	return last_map_addr;	//last_map_addr = 1MB
 }
 
-//arg start = 0, end = 1MB, page_size_mask = 0
+//#1: arg start = 0, end = 1MB, page_size_mask = 0
 unsigned long __meminit
 kernel_physical_mapping_init(unsigned long start,
 			     unsigned long end,
@@ -682,12 +683,14 @@ kernel_physical_mapping_init(unsigned long start,
 	unsigned long addr;
 
 	start = (unsigned long)__va(start);
-        //__va(0xffff880000000000 + start);
+        //#1: __va(0xffff880000000000 + start);
 	end = (unsigned long)__va(end);
+	//#1: __va(0xffff880000000000 + 100000) = 0xffff8800000100000
 	addr = start;
 
 	for (; start < end; start = next) {
-		// if start = _va(start = 0), pgd_offset_k(_va(start=0)) = 256 + 16 = 272
+		// start = _va(start = 0), 
+		// pgd_offset_k(_va(start=0)) = 256 + 16 = 272 <-실제출력함.
 		pgd_t *pgd = pgd_offset_k(start);
 		pud_t *pud;
 
@@ -710,6 +713,7 @@ kernel_physical_mapping_init(unsigned long start,
 		//BRK(pgt_buf_end)에서 page 1개를 얻어온다.
 		//2014.3.20. 여기까지 왔어요.
 		pud = alloc_low_page();
+		//#1: pud: 0xffff880000001c73
 		//_va(start = 0), _va(end = 1MB), page_size_mask = 0
 		last_map_addr = phys_pud_init(pud, __pa(start), __pa(end),
 						 page_size_mask);

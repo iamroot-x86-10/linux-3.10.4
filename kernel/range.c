@@ -127,19 +127,20 @@ static int cmp_range(const void *x1, const void *x2)
 	return start1 - start2;
 }
 
-// pfn_mapped , E820MAX = 320
+// pfn_mapped , E820MAX = 3200
 int clean_sort_range(struct range *range, int az)
 {
-	// k = 319, nr_range = 320
+	// k = 3199, nr_range = 3200
 	int i, j, k = az - 1, nr_range = az;
 
-	// k = 319, range[0].end에만 값이 있다.
+	// #1: k = 3199, range[0]에만 값이 있다.
 	for (i = 0; i < k; i++) {
 		if (range[i].end)
 			continue;
-		// i = 1, j = 319, 맨마지막 end가 있는 위치를 찾아서 k에 할당.
+		// i = 1, j = 3199, 맨마지막 end가 있는 위치를 찾아서 k에 할당.
 		// 아니면 j = i
 		for (j = k; j > i; j--) {
+			// #1: 일때 찾지못함.
 			if (range[j].end) {
 				k = j;
 				break;
@@ -166,9 +167,10 @@ int clean_sort_range(struct range *range, int az)
 	/* sort them */
 	//range = pfn_mapped, nr_ragnge = 1 , sizeof(strunct range), fn(cmp_range) 
 	//in lib/sort.c
+	// range[??].start기준으로 sort진행., 올림차순.
 	sort(range, nr_range, sizeof(struct range), cmp_range, NULL);
 
-	//return nr_range = 1
+	//#1: return nr_range = 1
 	return nr_range;
 }
 

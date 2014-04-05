@@ -316,9 +316,11 @@ static int __meminit split_mem_range(struct map_range *mr, int nr_range,
 	 *	- 아직 after_bootmem을 세팅하지 않았음.
 	 */
 	if (!after_bootmem)
+		// #1: nr_range(1)일때, 2M, 1G를 위한 page_size_mask가 설정되지 않는다.
 		adjust_range_page_size_mask(mr, nr_range);
 
 	/* try to merge same page size and continuous */
+	// #1: nr_range(1)일 때, skip.
 	for (i = 0; nr_range > 1 && i < nr_range - 1; i++) {
 		unsigned long old_start;
 		if (mr[i].end != mr[i+1].start ||
@@ -338,6 +340,7 @@ static int __meminit split_mem_range(struct map_range *mr, int nr_range,
 			(mr[i].page_size_mask & (1<<PG_LEVEL_1G))?"1G":(
 			 (mr[i].page_size_mask & (1<<PG_LEVEL_2M))?"2M":"4k"));
 
+	// #1: return nr_range(1)
 	return nr_range;
 }
 
@@ -347,11 +350,11 @@ int nr_pfn_mapped;
 //start_pfn = 0, end_pfn = 256
 static void add_pfn_range_mapped(unsigned long start_pfn, unsigned long end_pfn)
 {
-	// E820MAX = 128 + 3 * MAX_NUMNODES (1 << 6 = 64) = 320
+	// E820MAX = 128 + 3 * MAX_NUMNODES (1 << 10 = 1024) = 3200
 	// nr_pfn_mapped = 0, start_pfn = 0, end_pfn = 256
 	nr_pfn_mapped = add_range_with_merge(pfn_mapped, E820_X_MAX,
 					     nr_pfn_mapped, start_pfn, end_pfn);
-	// nr_pfn_mapped = 1, E820MAX = 320
+	// nr_pfn_mapped = 1, E820MAX = 3200
 	nr_pfn_mapped = clean_sort_range(pfn_mapped, E820_X_MAX);
 
 	// nr_pfn_mapped = 1, max_pfn_mapped = 0, end_pfn = 256
@@ -407,7 +410,7 @@ unsigned long __init_refok init_memory_mapping(unsigned long start,
 	// 2014. 3. 22. 여기까지 
 	add_pfn_range_mapped(start >> PAGE_SHIFT, ret >> PAGE_SHIFT);
 
-	//return 256
+	//#1: return 256
 	return ret >> PAGE_SHIFT;
 }
 
@@ -476,6 +479,7 @@ void __init init_mem_mapping(void)
 #endif
 
 	/* the ISA range is always mapped regardless of memory holes */
+	// 2014.04.05 드디어 완료.
 	init_memory_mapping(0, ISA_END_ADDRESS);
 
 	/* xen has big range in reserved near end of ram, skip it at first.*/
