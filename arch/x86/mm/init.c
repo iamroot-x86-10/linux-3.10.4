@@ -485,6 +485,9 @@ void __init init_mem_mapping(void)
 	/* xen has big range in reserved near end of ram, skip it at first.*/
 	//ISA_END_ADDRESS = 1MB, end = max_pfn << PAGE_SHIFT , PMD_SIZE = 2MB
 	// max_pfn = last_pfn = 0xdbcf7 <- youngjoo 8GB 기준
+	// ISA_END_ADDRESS = 1MB, end = max_pfn(11e600) << PAGE_SHIFT, PMD_SIZE = 2MB
+
+	// 2014.04.08 memblock_find_in_range() 까지 진행함.
 	addr = memblock_find_in_range(ISA_END_ADDRESS, end, PMD_SIZE, PMD_SIZE);
 	real_end = addr + PMD_SIZE;
 

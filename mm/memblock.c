@@ -100,7 +100,10 @@ static long __init_memblock memblock_overlaps_region(struct memblock_type *type,
  * RETURNS:
  * Found address on success, %0 on failure.
  */
-//args: 0, 0, 4096, 4, 64
+// #1: start=ISA_END_ADDRESS
+// #1: end = max_pfn << PAGE_SHIFT // 물리메모리의 끝.
+// #1: size = align = PMD_SIZE = 2MB
+// #1: nid = MAX_NUM_NODES = 1024
 phys_addr_t __init_memblock memblock_find_in_range_node(phys_addr_t start,
 					phys_addr_t end, phys_addr_t size,
 					phys_addr_t align, int nid)
@@ -109,23 +112,38 @@ phys_addr_t __init_memblock memblock_find_in_range_node(phys_addr_t start,
 	u64 i;
 
 	/* pump up @end */
+	// MEMBLOCK_ALLOC_ACCESSIBLE == 0
 	if (end == MEMBLOCK_ALLOC_ACCESSIBLE)
 		end = memblock.current_limit;
 
 	/* avoid allocating the first page */
 	start = max_t(phys_addr_t, start, PAGE_SIZE);
 	end = max(start, end);
-	// start = 4096
-	// end = 100000 ISA_END_ADDRESS
+	// #1:start = 4096
+	// #1:end = max_pfn << PAGE_SHIFT 
 	
 	// i = 0;
-	// nid = 64;
-	//
+	// nid = 1024;
+	/*
+		<    ><      ><             ><                 >
+		m1    m2      m3             m4                max_pfn         UULONG_MAX
+		      <    >      <         ><      >     
+		      r1          r2         r3                                UULONG_MAX
+		                             m_s               m_e
+		                                    r_s                        r_e
+		                                    <---------->
+		                                    outS       outE
+		                                    thisS      thisE
+	*/
 	for_each_free_mem_range_reverse(i, nid, &this_start, &this_end, NULL) {
 		/*clamp*/
 		this_start = clamp(this_start, start, end);
+		// this_start = this_start < start ? start : this_start
+		// this_start = this_start > end ? end : this_start
 		this_end = clamp(this_end, start, end);
-
+		// this_end = this_end < start ? start : this_end
+		// this_end = this_end > end ? end : this_end
+		
 		// size 검사
 		if (this_end < size)
 			continue;
@@ -151,6 +169,10 @@ phys_addr_t __init_memblock memblock_find_in_range_node(phys_addr_t start,
  * RETURNS:
  * Found address on success, %0 on failure.
  */
+
+// #1: start=ISA_END_ADDRESS
+// #1: end = max_pfn << PAGE_SHIFT // 물리메모리의 끝.
+// #1: size = align = PMD_SIZE = 2MB
 phys_addr_t __init_memblock memblock_find_in_range(phys_addr_t start,
 					phys_addr_t end, phys_addr_t size,
 					phys_addr_t align)
@@ -665,6 +687,10 @@ void __init_memblock __next_free_mem_range(u64 *idx, int nid,
  *
  * Reverse of __next_free_mem_range().
  */
+//#1: for_each_free_mem_range_reverse(i, nid, &this_start, &this_end, NULL) {
+//#1: i = ULLONG_MAX
+//#1: nid = 1024
+//#1: out_nid == NULL
 void __init_memblock __next_free_mem_range_rev(u64 *idx, int nid,
 					   phys_addr_t *out_start,
 					   phys_addr_t *out_end, int *out_nid)
@@ -678,13 +704,17 @@ void __init_memblock __next_free_mem_range_rev(u64 *idx, int nid,
 	int ri = *idx >> 32;
 
 	if (*idx == (u64)ULLONG_MAX) {
+		//#1: 진입
+		//#1: mi = 9 - 1 = 8
 		mi = mem->cnt - 1;
 		ri = rsv->cnt;
 	}
 
 	for ( ; mi >= 0; mi--) {
 		struct memblock_region *m = &mem->regions[mi];
+		// #1:mi(8) m_start = 4294967296
 		phys_addr_t m_start = m->base;
+		// #1:mi(8) m_end = 4294967296 + 509607936
 		phys_addr_t m_end = m->base + m->size;
 
 		/* only memory regions are associated with nodes, check it */
@@ -694,6 +724,18 @@ void __init_memblock __next_free_mem_range_rev(u64 *idx, int nid,
 		/* scan areas before each reservation for intersection */
 		for ( ; ri >= 0; ri--) {
 			struct memblock_region *r = &rsv->regions[ri];
+			
+			/*
+				<    ><      ><             ><                 >
+				m1    m2      m3             m4                max_pfn         UULONG_MAX
+				      <    >      <         ><      >     
+				      r1          r2         r3                                UULONG_MAX
+				                             m_s               m_e
+				                                    r_s                        r_e
+				                                    <---------->
+				                                    outS       outE
+				                                    thisS      thisE
+			*/
 			phys_addr_t r_start = ri ? r[-1].base + r[-1].size : 0;
 			phys_addr_t r_end = ri < rsv->cnt ? r->base : ULLONG_MAX;
 
