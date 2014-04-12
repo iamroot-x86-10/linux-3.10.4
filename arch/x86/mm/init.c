@@ -232,10 +232,12 @@ static int __meminit split_mem_range(struct map_range *mr, int nr_range,
 	int i;
 
 	// #1: limit_pfn = 256
+	// #2: limit_pfn = 0x11e600
 	limit_pfn = PFN_DOWN(end);
 
 	/* head if not big page alignment ? */
 	// #1: ptn = start_pfn = 0
+	// #2: ptn = start_pfn = 0x11e400
 	pfn = start_pfn = PFN_DOWN(start);
 #ifdef CONFIG_X86_32
 	/*
@@ -249,7 +251,8 @@ static int __meminit split_mem_range(struct map_range *mr, int nr_range,
 	else
 		end_pfn = round_up(pfn, PFN_DOWN(PMD_SIZE));
 #else /* CONFIG_X86_64 */
-	// #1: PFN_DOWN(PMD_SIZE) = 2MB/4K = 512
+	// #1: PFN_DOWN(PMD_SIZE) = 2MB/4K = 512 = 0x200
+	// #2: end_pfn = 0x11e400
 	end_pfn = round_up(pfn, PFN_DOWN(PMD_SIZE));
 #endif
 	if (end_pfn > limit_pfn)
@@ -264,20 +267,24 @@ static int __meminit split_mem_range(struct map_range *mr, int nr_range,
 
 	/* big page (2M) range */
 	// #1: start_pfn = 512
+	// #2: start_pfn = 0x11e400
 	start_pfn = round_up(pfn, PFN_DOWN(PMD_SIZE));
 #ifdef CONFIG_X86_32
 	end_pfn = round_down(limit_pfn, PFN_DOWN(PMD_SIZE));
 #else /* CONFIG_X86_64 */
-	// #1: PFN_DOWN(PUD_SIZE) = 1G/4K = 256K
+	// #1: PFN_DOWN(PUD_SIZE) = 1G/4K = 256K = 0x40000
+	// #2: end_pfn = 0x11e400 = 0x140000
 	end_pfn = round_up(pfn, PFN_DOWN(PUD_SIZE));
+	// #2: end_pfn = 0x11e600
 	if (end_pfn > round_down(limit_pfn, PFN_DOWN(PMD_SIZE)))
 		end_pfn = round_down(limit_pfn, PFN_DOWN(PMD_SIZE));
-		// #1: end_pfn = 0
 #endif
 
 	if (start_pfn < end_pfn) {
+		//nr_range = 1
 		nr_range = save_mr(mr, nr_range, start_pfn, end_pfn,
 				page_size_mask & (1<<PG_LEVEL_2M));
+		//pf = 0x11e600
 		pfn = end_pfn;
 	}
 
@@ -305,8 +312,10 @@ static int __meminit split_mem_range(struct map_range *mr, int nr_range,
 	/* tail is not big page (2M) alignment */
 	start_pfn = pfn;
 	// #1: start_pfn = 256 = end_pfn
+	// #2: start_pfn = 0x11e600
 	end_pfn = limit_pfn;
 	// #1: end_pfn = 256
+	// #2: end_pfn = 0x11e600
 	nr_range = save_mr(mr, nr_range, start_pfn, end_pfn, 0);
 	// #1: nr_range = 1
 
@@ -315,12 +324,14 @@ static int __meminit split_mem_range(struct map_range *mr, int nr_range,
 	 * 14.4.1 추가
 	 *	- 아직 after_bootmem을 세팅하지 않았음.
 	 */
+	// #1: nr_range(1)일때, 2M, 1G를 위한 page_size_mask가 설정되지 않는다.
+	// #2: nr_range(1)일때, 2M, 1G를 위한 page_size_mask가 설정되지 않는다.
 	if (!after_bootmem)
-		// #1: nr_range(1)일때, 2M, 1G를 위한 page_size_mask가 설정되지 않는다.
 		adjust_range_page_size_mask(mr, nr_range);
 
 	/* try to merge same page size and continuous */
 	// #1: nr_range(1)일 때, skip.
+	// #2: nr_range(1)일 때, skip.
 	for (i = 0; nr_range > 1 && i < nr_range - 1; i++) {
 		unsigned long old_start;
 		if (mr[i].end != mr[i+1].start ||
@@ -341,6 +352,7 @@ static int __meminit split_mem_range(struct map_range *mr, int nr_range,
 			 (mr[i].page_size_mask & (1<<PG_LEVEL_2M))?"2M":"4k"));
 
 	// #1: return nr_range(1)
+	// #2: return nr_range(1)
 	return nr_range;
 }
 
@@ -385,6 +397,7 @@ bool pfn_range_is_mapped(unsigned long start_pfn, unsigned long end_pfn)
  * This runs before bootmem is initialized and gets pages directly from
  * the physical memory. To access them they are temporarily mapped.
  */
+//#2: start = 0x11e400000, end = 0x11e5fffff
 unsigned long __init_refok init_memory_mapping(unsigned long start,
 					       unsigned long end)
 {
@@ -427,6 +440,7 @@ unsigned long __init_refok init_memory_mapping(unsigned long start,
  * That range would have hole in the middle or ends, and only ram parts
  * will be mapped in init_range_memory_mapping().
  */
+//#1: start = [0x0000011e400000] last_start = [0x0000011e600000]
 static unsigned long __init init_range_memory_mapping(
 					   unsigned long r_start,
 					   unsigned long r_end)
@@ -435,7 +449,12 @@ static unsigned long __init init_range_memory_mapping(
 	unsigned long mapped_ram_size = 0;
 	int i;
 
+	//MAX_NUMNODES = 10
+	//memblock region 영역을 하나씩 돌면서 start_pfn과 end_pfn을 얻어온다.
 	for_each_mem_pfn_range(i, MAX_NUMNODES, &start_pfn, &end_pfn, NULL) {
+		//PFN_PHYS(start_pfn) = start_pfn의 실제 물리주소를 나타낸다.
+		// __val = __val < __min ? __min: __val;	
+		// __val > __max ? __max: __val; 
 		u64 start = clamp_val(PFN_PHYS(start_pfn), r_start, r_end);
 		u64 end = clamp_val(PFN_PHYS(end_pfn), r_start, r_end);
 		if (start >= end)
@@ -445,13 +464,18 @@ static unsigned long __init init_range_memory_mapping(
 		 * if it is overlapping with brk pgt, we need to
 		 * alloc pgt buf from memblock instead.
 		 */
+	//#1 : [                  start : 0x11e400000 -          end: 0x11e5fffff]	
+	//#1 : pgt_buf_top << PAGE_SHIFT[0x0001df8000], pgt_buf_end [0x0001df5000]
 		can_use_brk_pgt = max(start, (u64)pgt_buf_end<<PAGE_SHIFT) >=
 				    min(end, (u64)pgt_buf_top<<PAGE_SHIFT);
+	//#1 : can_use_brk_pgt = 1
+	//#1 : mapped_ram_size = 0x00000200000
 		init_memory_mapping(start, end);
 		mapped_ram_size += end - start;
 		can_use_brk_pgt = true;
 	}
 
+	//return : mapped_ram_size = 0x00000200000
 	return mapped_ram_size;
 }
 
@@ -489,12 +513,14 @@ void __init init_mem_mapping(void)
 
 	// 2014.04.08 memblock_find_in_range() 까지 진행함.
 	addr = memblock_find_in_range(ISA_END_ADDRESS, end, PMD_SIZE, PMD_SIZE);
+	//addr = cand = [0x0000011e400000]
+	//real_end =  [0x00000100000000] mem.size = [1e600000]
 	real_end = addr + PMD_SIZE;
 
 	/* step_size need to be small so pgt_buf from BRK could cover it */
-	step_size = PMD_SIZE;
+	step_size = PMD_SIZE; /* 2MB */
 	max_pfn_mapped = 0; /* will get exact value next */
-	min_pfn_mapped = real_end >> PAGE_SHIFT;
+	min_pfn_mapped = real_end >> PAGE_SHIFT; /* real end / 4k */
 	last_start = start = real_end;
 
 	/*
@@ -504,14 +530,19 @@ void __init init_mem_mapping(void)
 	 * for page table.
 	 */
 	while (last_start > ISA_END_ADDRESS) {
+		//#1: last_start = [0x0000011e600000] step_size = [0x00000000200000]
 		if (last_start > step_size) {
 			start = round_down(last_start - 1, step_size);
 			if (start < ISA_END_ADDRESS)
 				start = ISA_END_ADDRESS;
+			//#1: start = [0x0000011e400000]
 		} else
 			start = ISA_END_ADDRESS;
+		//#1: start = [0x0000011e400000mapped_ram_size = 0x00000200000] 
 		new_mapped_ram_size = init_range_memory_mapping(start,
 							last_start);
+		//#1: new_mapped_ram_size = 0x00000000200000
+		//14.4.10 여기까지 
 		last_start = start;
 		min_pfn_mapped = last_start >> PAGE_SHIFT;
 		/* only increase step_size after big range get mapped */

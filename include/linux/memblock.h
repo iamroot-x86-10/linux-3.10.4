@@ -73,6 +73,7 @@ void __next_mem_pfn_range(int *idx, int nid, unsigned long *out_start_pfn,
  *
  * Walks over configured memory ranges.
  */
+/* nid = MAXNUMNODES */
 #define for_each_mem_pfn_range(i, nid, p_start, p_end, p_nid)		\
 	for (i = -1, __next_mem_pfn_range(&i, nid, p_start, p_end, p_nid); \
 	     i >= 0; __next_mem_pfn_range(&i, nid, p_start, p_end, p_nid))

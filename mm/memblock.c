@@ -173,6 +173,23 @@ phys_addr_t __init_memblock memblock_find_in_range_node(phys_addr_t start,
 // #1: start=ISA_END_ADDRESS
 // #1: end = max_pfn << PAGE_SHIFT // 물리메모리의 끝.
 // #1: size = align = PMD_SIZE = 2MB
+/*
+[0] mem.base = [0x00000000001000] mem.size = [9c000]
+[1] mem.base = [0x00000000100000] mem.size = [1ff00000]
+[2] mem.base = [0x00000020200000] mem.size = [1fe04000]
+[3] mem.base = [0x00000040005000] mem.size = [8d422000]
+[4] mem.base = [0x000000cddf8000] mem.size = [8d000]
+[5] mem.base = [0x000000ce555000] mem.size = [1000]
+[6] mem.base = [0x000000ce599000] mem.size = [7ba000]
+[7] mem.base = [0x000000ceff2000] mem.size = [e000]
+[8] mem.base = [0x00000100000000] mem.size = [1e600000] <== 이 부분에서 cand를 찾음
+[0] reserved.base = [0x00000000000000] reserved.size = [10000]
+[1] reserved.base = [0x00000000096000] reserved.size = [7000]
+[2] reserved.base = [0x0000000009d800] reserved.size = [62800]
+[3] reserved.base = [0x00000001000000] reserved.size = [df8000]
+[4] reserved.base = [0x0000001fa04000] reserved.size = [5ec000]
+    #1: cand = [0x0000011e400000]
+*/
 phys_addr_t __init_memblock memblock_find_in_range(phys_addr_t start,
 					phys_addr_t end, phys_addr_t size,
 					phys_addr_t align)
@@ -768,6 +785,7 @@ void __init_memblock __next_free_mem_range_rev(u64 *idx, int nid,
 /*
  * Common iterator interface used to define for_each_mem_range().
  */
+/* idx = -1, nid = 10, start_pfn/end_pfn, out_nid = NULL */
 void __init_memblock __next_mem_pfn_range(int *idx, int nid,
 				unsigned long *out_start_pfn,
 				unsigned long *out_end_pfn, int *out_nid)
@@ -775,19 +793,22 @@ void __init_memblock __next_mem_pfn_range(int *idx, int nid,
 	struct memblock_type *type = &memblock.memory;
 	struct memblock_region *r;
 
+	//i = 0 , type->cnt = 9
 	while (++*idx < type->cnt) {
+		//regions = mem.base + mem.size
 		r = &type->regions[*idx];
 
+		//region이 4k이하이면 다음 region으로 넘어간다.
 		if (PFN_UP(r->base) >= PFN_DOWN(r->base + r->size))
 			continue;
 		if (nid == MAX_NUMNODES || nid == r->nid)
 			break;
 	}
+	//pfn을 못찾음
 	if (*idx >= type->cnt) {
 		*idx = -1;
 		return;
 	}
-
 	if (out_start_pfn)
 		*out_start_pfn = PFN_UP(r->base);
 	if (out_end_pfn)
