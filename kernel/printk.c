@@ -745,6 +745,7 @@ static int __init log_buf_len_setup(char *str)
 
 	if (size)
 		size = roundup_pow_of_two(size);
+	/* log_buf_len = Kernel Configure Log buffer size */
 	if (size > log_buf_len)
 		new_log_buf_len = size;
 
@@ -752,6 +753,11 @@ static int __init log_buf_len_setup(char *str)
 }
 early_param("log_buf_len", log_buf_len_setup);
 
+/*
+ * new_log_buf_len은 log_buf_len_setup()에서 log_buf_len보다 큰 값이
+ * 들어오는 경우 new_log_buf_len이 update 된다.
+ * new_log_buf_len이 log_buf_len보다 작은 경우 return
+ */
 void __init setup_log_buf(int early)
 {
 	unsigned long flags;

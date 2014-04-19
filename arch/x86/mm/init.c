@@ -535,10 +535,12 @@ void __init init_mem_mapping(void)
 			start = round_down(last_start - 1, step_size);
 			if (start < ISA_END_ADDRESS)
 				start = ISA_END_ADDRESS;
-			//#1: start = [0x0000011e400000]
+			//#1: start = [0x0000011e400000], step_size = [0x00000000200000]
+			//#2: start = [0x0000011c000000], step_size = [0x00000004000000]
 		} else
 			start = ISA_END_ADDRESS;
-		//#1: start = [0x0000011e400000mapped_ram_size = 0x00000200000] 
+		//#1: start = [0x0000011e400000 mapped_ram_size = 0x00000200000] 
+		//#2: start = [0x0000011e400000 mapped_ram_size = 0x00000200000] 
 		new_mapped_ram_size = init_range_memory_mapping(start,
 							last_start);
 		//#1: new_mapped_ram_size = 0x00000000200000

@@ -382,6 +382,12 @@ static void __init early_reserve_initrd(void)
 static void __init reserve_initrd(void)
 {
 	/* Assume only end is not page aligned */
+	/* reserve_early_initrd에서 memblock_reserve를 통해서 ramdisk 영역을 잡아 놓은 
+	 * 영역의 위치와 size를 가져온다.
+	 * ramdisk_image : 0x1fa04000
+	 * ramdisk_size : [5ec000]
+	 * ramdisk_end : 0x1fff0000
+	 */
 	u64 ramdisk_image = get_ramdisk_image();
 	u64 ramdisk_size  = get_ramdisk_size();
 	u64 ramdisk_end   = PAGE_ALIGN(ramdisk_image + ramdisk_size);
@@ -402,6 +408,10 @@ static void __init reserve_initrd(void)
 	printk(KERN_INFO "RAMDISK: [mem %#010llx-%#010llx]\n", ramdisk_image,
 			ramdisk_end - 1);
 
+	/* 이미 ramdisk가 존재 하는 경우 그 영역을 사용하고, 
+	 * 아닌 경우 새로 memblock에 영역을 잡아서 (relocate_initrd())
+	 * 원래 ramdisk의 영역을  제거한다. 
+	 */
 	if (pfn_range_is_mapped(PFN_DOWN(ramdisk_image),
 				PFN_DOWN(ramdisk_end))) {
 		/* All are mapped, easy case */
@@ -601,6 +611,10 @@ static void __init reserve_crashkernel_low(void)
 #endif
 }
 
+/*
+ * reserve_crashkernel
+ * 
+ */
 static void __init reserve_crashkernel(void)
 {
 	const unsigned long long alignment = 16<<20;	/* 16M */
@@ -1351,6 +1365,7 @@ void __init setup_arch(char **cmdline_p)
 
 	early_trap_pf_init();
 
+	/* AP를 깨우면 real_mode부터 시작한다. secondary_startup_64를 시작할 수 있도록 한다 */
 	setup_real_mode();
 
 	memblock.current_limit = get_max_mapped();
@@ -1361,6 +1376,7 @@ void __init setup_arch(char **cmdline_p)
 	 */
 
 #ifdef CONFIG_PROVIDE_OHCI1394_DMA_INIT
+	/* firewire 1394 setting x86 */
 	if (init_ohci1394_dma_early)
 		init_ohci1394_dma_on_all_controllers();
 #endif
@@ -1373,20 +1389,33 @@ void __init setup_arch(char **cmdline_p)
 	acpi_initrd_override((void *)initrd_start, initrd_end - initrd_start);
 #endif
 
+	/* KEXEC에서 사용할 memory 를 reserve 한다. */
 	reserve_crashkernel();
 
+	/* vSMP 기능을 지원하는 경우, initialze 한다 */
 	vsmp_init();
 
+	/* 특정한 DMI(port 0x80 override)를 사용하는 vender(HP)의 경우, io_delay callback을 통해서,
+	   io_delay관련 setting을 해준다 */
 	io_delay_init();
 
 	/*
 	 * Parse the ACPI tables for possible boot-time SMP configuration.
+	 * ACPI를 설정한다. 
 	 */
 	acpi_boot_table_init();
 
 	early_acpi_boot_init();
 
+	/*
+	 * NUMA를 사용하지 않는다.
+	 * X86에서는 사용하지 않고, itanium architecture에서 사용한다. 
+	 */
 	initmem_init();
+	/*
+	 * 16MB (ZONE_DMA) 이하의 영역 중 전체 pfn개수 중에서 free pfn을 빼서 (reserved)
+	 * DMA 영역으로 설정한다. 
+	 */
 	memblock_find_dma_reserve();
 
 #ifdef CONFIG_KVM_GUEST

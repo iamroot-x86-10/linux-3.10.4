@@ -1511,6 +1511,11 @@ static struct dmi_system_id __initdata acpi_dmi_table_late[] = {
 
 void __init acpi_boot_table_init(void)
 {
+	/* acpi_dmi_table 내에 있는 특정 vendor인 경우 
+	 * acpi_disabled 변수가 1로 변경된다. 
+	 * acpi_dmi_table 내에 있는 특정 vendor의 system은
+	 * dmi 를 disalbe 시킨다. 
+	 */
 	dmi_check_system(acpi_dmi_table);
 
 	/*

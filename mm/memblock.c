@@ -922,6 +922,10 @@ phys_addr_t __init memblock_phys_mem_size(void)
 	return memblock.memory.total_size;
 }
 
+/*
+ * memblock_mem_size : memblock 내에 있는 모든 영역의 start_pfn과 end_pfn의 값으로
+ *                     각 memblock 의 크기를 구하고, 전체 memblock의 크기를 더하여 return 한다.
+ */
 phys_addr_t __init memblock_mem_size(unsigned long limit_pfn)
 {
 	unsigned long pages = 0;
