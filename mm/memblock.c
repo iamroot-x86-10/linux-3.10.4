@@ -786,6 +786,7 @@ void __init_memblock __next_free_mem_range_rev(u64 *idx, int nid,
  * Common iterator interface used to define for_each_mem_range().
  */
 /* idx = -1, nid = 10, start_pfn/end_pfn, out_nid = NULL */
+/* from: paging_init(), idx = -1, nid = 64, start_pfn/end_pfn, out_nid = NULL */
 void __init_memblock __next_mem_pfn_range(int *idx, int nid,
 				unsigned long *out_start_pfn,
 				unsigned long *out_end_pfn, int *out_nid)

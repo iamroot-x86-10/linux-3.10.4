@@ -20,6 +20,10 @@
  * 1) mem_section	- memory sections, mem_map's for valid memory
  */
 #ifdef CONFIG_SPARSEMEM_EXTREME
+// NR_SECTION _ROOTS: 4096
+// 하나의 mem_section은 1개의 루트를 뜻하며 1개의 루트는 128개의 section을 가진다.
+// 1개의 section은 128Mib를 포함함으로.
+// 4096 * 16G = 64TiB가 되어 mem_section[4096] 이 전체 리눅스 물리메모리를 가리킨다.
 struct mem_section *mem_section[NR_SECTION_ROOTS]
 	____cacheline_internodealigned_in_smp;
 #else
@@ -60,6 +64,7 @@ static inline void set_section_nid(unsigned long section_nr, int nid)
 static struct mem_section noinline __init_refok *sparse_index_alloc(int nid)
 {
 	struct mem_section *section = NULL;
+	// array_size: 4096
 	unsigned long array_size = SECTIONS_PER_ROOT *
 				   sizeof(struct mem_section);
 
@@ -84,6 +89,7 @@ static int __meminit sparse_index_init(unsigned long section_nr, int nid)
 	if (mem_section[root])
 		return -EEXIST;
 
+	// 4096 크기의 메모리를 할당하고 section에 할당.
 	section = sparse_index_alloc(nid);
 	if (!section)
 		return -ENOMEM;
@@ -143,6 +149,7 @@ static inline int sparse_early_nid(struct mem_section *section)
 void __meminit mminit_validate_memmodel_limits(unsigned long *start_pfn,
 						unsigned long *end_pfn)
 {
+	// 대략 16G개가 MAX값.
 	unsigned long max_sparsemem_pfn = 1UL << (MAX_PHYSMEM_BITS-PAGE_SHIFT);
 
 	/*
@@ -170,8 +177,10 @@ void __init memory_present(int nid, unsigned long start, unsigned long end)
 {
 	unsigned long pfn;
 
+	// start를 32KB로 masking
 	start &= PAGE_SECTION_MASK;
 	mminit_validate_memmodel_limits(&start, &end);
+	// PAGES_PER_SECTION=32KiB이므로 128MiB메모리만큼 하나의 섹션으로 처리함.
 	for (pfn = start; pfn < end; pfn += PAGES_PER_SECTION) {
 		unsigned long section = pfn_to_section_nr(pfn);
 		struct mem_section *ms;
