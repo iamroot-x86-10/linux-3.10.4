@@ -255,6 +255,13 @@ static int __meminit sparse_init_one_section(struct mem_section *ms,
 unsigned long usemap_size(void)
 {
 	unsigned long size_bytes;
+    /*
+     * 한개의 section(128MB)을 표현하기 위한 usemap_size = 32byte(server기준)
+     * SECTION_BLOCKFLAGS_BITS = 256 (=32byte)
+     * NR_PAGEBLOCK_BITS = 4
+     * 하나의 PAGEBLOCK당 4BIT를 사용
+     * PAGEBLOCK = 512 * PAGE(4k) = 2MB
+     */
 	size_bytes = roundup(SECTION_BLOCKFLAGS_BITS, 8) / 8;
 	size_bytes = roundup(size_bytes, sizeof(unsigned long));
 	return size_bytes;
@@ -356,9 +363,11 @@ static void __init sparse_early_usemaps_alloc_node(unsigned long**usemap_map,
 {
 	void *usemap;
 	unsigned long pnum;
-	int size = usemap_size();
+	/* size = server기준 32 */
+    int size = usemap_size();
 
-	usemap = sparse_early_usemaps_alloc_pgdat_section(NODE_DATA(nodeid),
+	/* 32byte * 30개 만큼의 공간을 0으로 초기화 하고 할당받음 */
+    usemap = sparse_early_usemaps_alloc_pgdat_section(NODE_DATA(nodeid),
 							  size * usemap_count);
 	if (!usemap) {
 		printk(KERN_WARNING "%s: allocation failed\n", __func__);
@@ -370,7 +379,8 @@ static void __init sparse_early_usemaps_alloc_node(unsigned long**usemap_map,
 			continue;
 		usemap_map[pnum] = usemap;
 		usemap += size;
-		check_usemap_section_nr(nodeid, usemap_map[pnum]);
+		/* 다른nid값을 가진 section에 공간을 할당한 경우 warning */
+        check_usemap_section_nr(nodeid, usemap_map[pnum]);
 	}
 }
 
@@ -504,12 +514,14 @@ void __init sparse_init(void)
 	 * powerpc need to call sparse_init_one_section right after each
 	 * sparse_early_mem_map_alloc, so allocate usemap_map at first.
 	 */
+    /* 8byte * 512k개 만큼의 공간을 alloc */
 	size = sizeof(unsigned long *) * NR_MEM_SECTIONS;
 	usemap_map = alloc_bootmem(size);
 	if (!usemap_map)
 		panic("can not allocate usemap_map\n");
 
-	for (pnum = 0; pnum < NR_MEM_SECTIONS; pnum++) {
+	/* 첫번째 section을 찾는다 */
+    for (pnum = 0; pnum < NR_MEM_SECTIONS; pnum++) {
 		struct mem_section *ms;
 
 		if (!present_section_nr(pnum))
@@ -541,7 +553,9 @@ void __init sparse_init(void)
 		usemap_count = 1;
 	}
 	/* ok, last chunk */
-	sparse_early_usemaps_alloc_node(usemap_map, pnum_begin, NR_MEM_SECTIONS,
+	/* usemap_map[pnum_begin] ~ usemap_map[pnum_begin + usemap_count]
+     * 32byte씩 30개의 공간(server 기준)을 alloc함 */
+    sparse_early_usemaps_alloc_node(usemap_map, pnum_begin, NR_MEM_SECTIONS,
 					 usemap_count, nodeid_begin);
 
 #ifdef CONFIG_SPARSEMEM_ALLOC_MEM_MAP_TOGETHER

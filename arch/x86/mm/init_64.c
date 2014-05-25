@@ -1385,8 +1385,10 @@ static int __meminit vmemmap_populate_hugepages(unsigned long start,
 	pud_t *pud;
 	pmd_t *pmd;
 
-	for (addr = start; addr < end; addr = next) {
-		next = pmd_addr_end(addr, end);
+	/* start = 0xFFFFEA....
+     * next = 2MB단위 */
+    for (addr = start; addr < end; addr = next) {
+        next = pmd_addr_end(addr, end);
 
 		pgd = vmemmap_pgd_populate(addr, node);
 		if (!pgd)

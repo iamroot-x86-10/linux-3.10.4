@@ -215,7 +215,8 @@ void __init sparse_mem_maps_populate_node(struct page **map_map,
 		if (!present_section_nr(pnum))
 			continue;
 
-		map_map[pnum] = sparse_mem_map_populate(pnum, nodeid);
+		/* 0xFFFFEA.... ~ 2MB단위로 쪼개서 map_map[]에 넣어줌 */
+        map_map[pnum] = sparse_mem_map_populate(pnum, nodeid);
 		if (map_map[pnum])
 			continue;
 		ms = __nr_to_section(pnum);
@@ -224,7 +225,8 @@ void __init sparse_mem_maps_populate_node(struct page **map_map,
 		ms->section_mem_map = 0;
 	}
 
-	if (vmemmap_buf_start) {
+	/* buf가 남아있는 경우 남은 buf를 free */
+    if (vmemmap_buf_start) {
 		/* need to free left buf */
 		free_bootmem(__pa(vmemmap_buf), vmemmap_buf_end - vmemmap_buf);
 		vmemmap_buf = NULL;
