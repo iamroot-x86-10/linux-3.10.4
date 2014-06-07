@@ -743,6 +743,7 @@ void __init initmem_init(void)
 
 void __init paging_init(void)
 {
+	// 
 	sparse_memory_present_with_active_regions(MAX_NUMNODES);
 	sparse_init();
 
@@ -752,6 +753,7 @@ void __init paging_init(void)
 	 *	 numa support is not compiled in, and later node_set_state
 	 *	 will not set it back.
 	 */
+	// 현재 N_MEMORY = 2
 	node_clear_state(0, N_MEMORY);
 	if (N_MEMORY != N_NORMAL_MEMORY)
 		node_clear_state(0, N_NORMAL_MEMORY);

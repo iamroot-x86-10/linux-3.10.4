@@ -511,7 +511,10 @@ asmlinkage void __init start_kernel(void)
 	boot_cpu_init();
 	page_address_init();
 	pr_notice("%s", linux_banner);
+	// 2014.06.07 완료.
 	setup_arch(&command_line);
+
+	// 이제 할 곳.
 	mm_init_owner(&init_mm, &init_task);
 	mm_init_cpumask(&init_mm);
 	setup_command_line(command_line);

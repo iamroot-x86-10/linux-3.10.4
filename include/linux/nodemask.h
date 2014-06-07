@@ -95,7 +95,9 @@
 #include <linux/bitmap.h>
 #include <linux/numa.h>
 
+//MAX_NUMNODES=1024
 typedef struct { DECLARE_BITMAP(bits, MAX_NUMNODES); } nodemask_t;
+// typedef struct { unsigned long bits[16]; } nodemask_t;
 extern nodemask_t _unused_nodemask_arg_;
 
 #define node_set(node, dst) __node_set((node), &(dst))
@@ -394,6 +396,7 @@ enum node_states {
  * on them manage all possible and online nodes.
  */
 
+// NR_NODE_STATES = 4
 extern nodemask_t node_states[NR_NODE_STATES];
 
 #if MAX_NUMNODES > 1

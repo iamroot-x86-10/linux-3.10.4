@@ -643,6 +643,8 @@ __init void e820_setup_gap(void)
 	unsigned long gapstart, gapsize;
 	int found;
 
+	// PCI devices를 위해서 BIOS가 아래 영역이상의 공간을 할당해뒀어야 한다.
+	// 그렇지 않으면 아래서 KERN_ERR이 된다.
 	gapstart = 0x10000000;
 	gapsize = 0x400000;
 	found  = e820_search_gap(&gapstart, &gapsize, 0, MAX_GAP_END);
@@ -701,12 +703,16 @@ void __init e820_mark_nosave_regions(unsigned long limit_pfn)
 	unsigned long pfn;
 
 	pfn = PFN_DOWN(e820.map[0].addr + e820.map[0].size);
+	// 0, 2, 3,5 ,6
 	for (i = 1; i < e820.nr_map; i++) {
 		struct e820entry *ei = &e820.map[i];
 
+		// nosave_regions 전역 list에 e820.map 엔트리들 사이에 빈 page들을
+		// 추가로 메모리를 할당해서 챙겨둔다.
 		if (pfn < PFN_UP(ei->addr))
 			register_nosave_region(pfn, PFN_UP(ei->addr));
 
+		// RAM, RESERVED_KERN이 아닌 애들도 추가로 메모리를 할당해서 챙겨둔다.
 		pfn = PFN_DOWN(ei->addr + ei->size);
 		if (ei->type != E820_RAM && ei->type != E820_RESERVED_KERN)
 			register_nosave_region(PFN_UP(ei->addr), pfn);
@@ -961,6 +967,8 @@ void __init e820_reserve_resources(void)
 	e820_res = res;
 	for (i = 0; i < e820.nr_map; i++) {
 		end = e820.map[i].addr + e820.map[i].size - 1;
+		// CONFIG_PHYS_ADDR_T_64BIT=N이면,
+		// e820.map의 엔트리중에 32bit를 넘어서는 애들은 사용하지 않는다.
 		if (end != (resource_size_t)end) {
 			res++;
 			continue;
@@ -983,6 +991,8 @@ void __init e820_reserve_resources(void)
 		res++;
 	}
 
+	// 전역 linked list인 map_entries에 firmware_map_entry 타입의 데이터를 연결하고,
+	// firmware_map_entry에 e820_saved.map[i]에 대한 정보를 저장한다.
 	for (i = 0; i < e820_saved.nr_map; i++) {
 		struct e820entry *entry = &e820_saved.map[i];
 		firmware_map_add_early(entry->addr,

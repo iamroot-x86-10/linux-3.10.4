@@ -711,6 +711,8 @@ void __init reserve_standard_io_resources(void)
 	int i;
 
 	/* request I/O space for devices used on all i[345]86 PCs */
+	// standard_io_resources[i] 중에, ioport_resource랑 충돌나지 않는
+	// 모든 resource들을 추가한다.
 	for (i = 0; i < ARRAY_SIZE(standard_io_resources); i++)
 		request_resource(&ioport_resource, &standard_io_resources[i]);
 
@@ -1427,6 +1429,12 @@ void __init setup_arch(char **cmdline_p)
 	if (boot_cpu_data.cpuid_level >= 0) {
 		/* A CPU has %cr4 if and only if it has CPUID */
 		mmu_cr4_features = read_cr4();
+		// mmu_cr4_features = 0xB0
+		// 0000 0000 0000 0000 0000 0000 1011 0000
+		// setted PSE = page size extention
+		// setted PAE = Physical Address Extension
+		// setted PGE = page global enable
+		// 2개가 세팅되어있는 상태
 		if (trampoline_cr4_features)
 			*trampoline_cr4_features = mmu_cr4_features;
 	}
@@ -1438,19 +1446,25 @@ void __init setup_arch(char **cmdline_p)
 			KERNEL_PGD_PTRS);
 #endif
 
+	// Trusted boot를 지원하는 시스템을 위한 환경설정
+	// server는 따로 적용되어있지 않아서 skip함.
 	tboot_probe();
 
 #ifdef CONFIG_X86_64
+	// vsyscall, vvar를 위한 page table을 생성함
 	map_vsyscall();
 #endif
 
+	// 64는 없음.skip
 	generic_apic_probe();
 
+	// 도영주님꺼.
 	early_quirks();
 
 	/*
 	 * Read APIC and some other early information from ACPI tables.
 	 */
+	// 도영주님꺼 part2
 	acpi_boot_init();
 	sfi_init();
 	x86_dtb_init();
@@ -1461,23 +1475,47 @@ void __init setup_arch(char **cmdline_p)
 	if (smp_found_config)
 		get_smp_config();
 
+	// 현재 시스템에 사용가능한 core의 총개수(disable되어있는 것 포함)
+	// 를 extern int nr_cpu_ids에 저장
 	prefill_possible_map();
 
+	// 잘몰라서 현상만 저장
+	// bizaid server desktop
+	// cpu  |  apicid  | __apicid_to_node[apicid]
+	//  0         0              -1
+	//  1         2              -1
+	//  아무것도 하는 일이 없음
+	//  우리 생각에. NUMA코드를 사용하는 UMA이기 때문에
+	//  별도로 apic를 지정할 필요가 없어서 __apicid_to_node[]가 전부 -1로 초기화된 후에
+	//  수정된 적이 없다.
 	init_cpu_to_node();
 
+	// 도영주님꺼 part3
 	init_apic_mappings();
 	if (x86_io_apic_ops.init)
+		// 일단 타긴탑니다.
 		x86_io_apic_ops.init();
 
+	// unsupport KVM
 	kvm_guest_init();
 
+	//e820_res에 e820.map[i]를 모두 저장하고,
+	//map_entries에 e820_saved.map[i]를 모두 저장한다.
 	e820_reserve_resources();
+	//안에 설명있음.
 	e820_mark_nosave_regions(max_low_pfn);
-
+	
+	/* request I/O space for devices used on all i[345]86 PCs */
+	// standard_io_resources[i] 중에, ioport_resource랑 충돌나지 않는
+	// 모든 resource들을 추가한다.
 	x86_init.resources.reserve_resources();
 
+	// PCI를 위한 메모리공간을 검색해서 pci_mem_start에 주소를 할당해준다.
+	// 공간을 찾을 수 없을 경우에 max_pfn + 1MiB위치를 pci_mem_start로 사용한다.
 	e820_setup_gap();
 
+	
+	// CONFIG_VT = Virtual Terminal
 #ifdef CONFIG_VT
 #if defined(CONFIG_VGA_CONSOLE)
 	if (!efi_enabled(EFI_BOOT) || (efi_mem_type(0xa0000) != EFI_CONVENTIONAL_MEMORY))
@@ -1488,12 +1526,17 @@ void __init setup_arch(char **cmdline_p)
 #endif
 	x86_init.oem.banner();
 
+	// x86 없음
 	x86_init.timers.wallclock_init();
 
+	// intel thermal features를 위한 설정
 	mcheck_init();
 
+	// cpu별로 nop을 몇번줄건지를 찾아서 설정
 	arch_init_ideal_nops();
 
+	// CLOCK_TICK_RATE= #define PIT_TICK_RATE 1193182ul
+	// 현재까지 진행된 clock수랑 CLOCK_TICK_RATE를 통해서 현재 시간을 확인한다.
 	register_refined_jiffies(CLOCK_TICK_RATE);
 
 #ifdef CONFIG_EFI

@@ -298,6 +298,7 @@ void __init early_quirks(void)
 {
 	int slot, func;
 
+	// pci_allowed = true
 	if (!early_pci_allowed())
 		return;
 

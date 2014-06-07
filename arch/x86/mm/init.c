@@ -672,6 +672,7 @@ void __init free_initrd_mem(unsigned long start, unsigned long end)
 
 void __init zone_sizes_init(void)
 {
+	// MAX_NR_ZONES = 3
 	unsigned long max_zone_pfns[MAX_NR_ZONES];
 
 	memset(max_zone_pfns, 0, sizeof(max_zone_pfns));
@@ -686,6 +687,9 @@ void __init zone_sizes_init(void)
 #ifdef CONFIG_HIGHMEM
 	max_zone_pfns[ZONE_HIGHMEM]	= max_pfn;
 #endif
+
+	//
+	//max_low_pfn : 11e600
 
 	free_area_init_nodes(max_zone_pfns);
 }

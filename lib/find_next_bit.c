@@ -23,6 +23,8 @@
 unsigned long find_next_bit(const unsigned long *addr, unsigned long size,
 			    unsigned long offset)
 {
+	// unsigned long bits[16] = 1, 0, 0, 0, 0, ..... 0
+	// offset = 1
 	const unsigned long *p = addr + BITOP_WORD(offset);
 	unsigned long result = offset & ~(BITS_PER_LONG-1);
 	unsigned long tmp;
@@ -116,6 +118,10 @@ unsigned long find_first_bit(const unsigned long *addr, unsigned long size)
 	const unsigned long *p = addr;
 	unsigned long result = 0;
 	unsigned long tmp;
+
+	// node_state[4];
+	// node_state[0] = bits[16] = 1, 000000
+	// node_state[1] = bits[16] = 1, 000000
 
 	while (size & ~(BITS_PER_LONG-1)) {
 		if ((tmp = *(p++)))

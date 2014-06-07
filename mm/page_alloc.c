@@ -4732,6 +4732,8 @@ void __paginginit free_area_init_node(int nid, unsigned long *zones_size,
 
 	pgdat->node_id = nid;
 	pgdat->node_start_pfn = node_start_pfn;
+	// 여기까지 했어요.
+	//
 	init_zone_allows_reclaim(nid);
 	calculate_node_totalpages(pgdat, zones_size, zholes_size);
 
@@ -5050,7 +5052,10 @@ void __init free_area_init_nodes(unsigned long *max_zone_pfn)
 				sizeof(arch_zone_lowest_possible_pfn));
 	memset(arch_zone_highest_possible_pfn, 0,
 				sizeof(arch_zone_highest_possible_pfn));
+	// find_min_pfn_with_active_regions은 현재 존재하는 모든 memblock.memory노드 중에
+	// 가장 작은 start_pfn값을 반환
 	arch_zone_lowest_possible_pfn[0] = find_min_pfn_with_active_regions();
+	// max_zone_pfn[0] = MAX_DMA_PFN = 16MB/4KiB 된 값.
 	arch_zone_highest_possible_pfn[0] = max_zone_pfn[0];
 	for (i = 1; i < MAX_NR_ZONES; i++) {
 		if (i == ZONE_MOVABLE)
@@ -5060,6 +5065,12 @@ void __init free_area_init_nodes(unsigned long *max_zone_pfn)
 		arch_zone_highest_possible_pfn[i] =
 			max(max_zone_pfn[i], arch_zone_lowest_possible_pfn[i]);
 	}
+	// arch_zone_lowest_possible_pfn[0] = memblock.memory노드중 가장작은 start_pfn
+	// arch_zone_highest_possible_pfn[0] = 16MiB/4KiB
+	// arch_zone_lowest_possible_pfn[1] = 16MiB/4KiB
+	// arch_zone_highest_possible_pfn[1] = 4GiB/4KiB
+	// arch_zone_lowest_possible_pfn[2] = 4GiB/4KiB
+	// arch_zone_highest_possible_pfn[2] = max_low_pfn 약 4.5GiB
 	arch_zone_lowest_possible_pfn[ZONE_MOVABLE] = 0;
 	arch_zone_highest_possible_pfn[ZONE_MOVABLE] = 0;
 
@@ -5082,6 +5093,10 @@ void __init free_area_init_nodes(unsigned long *max_zone_pfn)
 				(arch_zone_highest_possible_pfn[i]
 					<< PAGE_SHIFT) - 1);
 	}
+	// 출력결과
+	// DMA    :      1000 -    FFFFFF
+	// DMA32  :   1000000 -  FFFFFFFF
+	// NORMAL : 100000000 - 11E5FFFFF
 
 	/* Print out the PFNs ZONE_MOVABLE begins at in each node */
 	printk("Movable zone start for each node\n");
@@ -5099,9 +5114,14 @@ void __init free_area_init_nodes(unsigned long *max_zone_pfn)
 
 	/* Initialise every node */
 	mminit_verify_pageflags_layout();
+	// T.B.D
 	setup_nr_node_ids();
+	// T.B.D
+	// node마다 free영역 설정, 특히 free_area_init_core()에서는
+	// struct zone에 데이터가 설정된다.
 	for_each_online_node(nid) {
 		pg_data_t *pgdat = NODE_DATA(nid);
+		// 여기까지 했어요.
 		free_area_init_node(nid, NULL,
 				find_min_pfn_for_node(nid), NULL);
 
