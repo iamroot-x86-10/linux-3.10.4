@@ -1458,15 +1458,18 @@ void __init setup_arch(char **cmdline_p)
 	// 64는 없음.skip
 	generic_apic_probe();
 
-	// 도영주님꺼.
+	// PCI 에서 기본동작이 아닌 다른 방식으로 동작하는 device초기화
 	early_quirks();
 
 	/*
 	 * Read APIC and some other early information from ACPI tables.
 	 */
-	// 도영주님꺼 part2
+	// ACPI spec 참조 
 	acpi_boot_init();
+	// Simple Firmware Interface : Intel Moorestown Platform supports.
+	// Atom Processor
 	sfi_init();
+	// device tree blob (device tree를 binary로 변환)
 	x86_dtb_init();
 
 	/*
@@ -1490,10 +1493,14 @@ void __init setup_arch(char **cmdline_p)
 	//  수정된 적이 없다.
 	init_cpu_to_node();
 
-	// 도영주님꺼 part3
+	// Interrupt Controller Mapping
+	// APIC = LAPIC(on processor) + I/O APIC(on bus)
+	// Single CPU : 
+	// LAPIC(Local Advanced Programmable Interrupt Controller)을 disable 한다.
+	// SMP : LAPIC의 주소를 mapping
 	init_apic_mappings();
+	// APIC 초기화 : memory 영역에 interrupt controller의 물리주소값을 설정
 	if (x86_io_apic_ops.init)
-		// 일단 타긴탑니다.
 		x86_io_apic_ops.init();
 
 	// unsupport KVM

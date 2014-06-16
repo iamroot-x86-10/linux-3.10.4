@@ -487,7 +487,7 @@ asmlinkage void __init start_kernel(void)
 	debug_objects_early_init();
 
 	/*
-	 * Set up the the initial canary ASAP:a
+	 * Set up the the initial canary ASAP
 	 * starck canary값을 current task와 irq_stack_union 에 저장해둔다.
 	 * (per-cup에 해당하는 task와 irq_stack에 저장)
 	 */
@@ -514,11 +514,17 @@ asmlinkage void __init start_kernel(void)
 	// 2014.06.07 완료.
 	setup_arch(&command_line);
 
-	// 이제 할 곳.
+	// CONFIG_MM_OWNER define이 없어서 빈 함수
+	// define이 있으면 init_mm->owner에 init_task를 assign한다.
+	// __rcu : /Documentation/RCU/ 아래 documents 참조
 	mm_init_owner(&init_mm, &init_task);
+	// CONFIG_CPUMASK_OFFSTACK 이 없어서 빈 함수
+	// 있으면 init_mm->cpu_vm_mask_var에 init_mm->cpumask_allocation을 추가
 	mm_init_cpumask(&init_mm);
+	// kernel boot command line을 saved_command_line, static_command_line에 저장
 	setup_command_line(command_line);
 	setup_nr_cpu_ids();
+	// NR_CPUS:4096 nr_cpumask_bits:2 nr_cpu_ids:2 nr_node_ids:1
 	setup_per_cpu_areas();
 	smp_prepare_boot_cpu();	/* arch-specific boot-cpu hooks */
 

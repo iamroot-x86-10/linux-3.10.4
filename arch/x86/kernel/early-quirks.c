@@ -294,6 +294,9 @@ static int __init check_dev_quirk(int num, int slot, int func)
 	return 0;
 }
 
+/*
+ * quirk : 기본 동작을 준수하지 않은 것으로 간주되는 장치의 속성
+ */
 void __init early_quirks(void)
 {
 	int slot, func;
