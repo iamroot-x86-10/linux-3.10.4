@@ -523,11 +523,18 @@ asmlinkage void __init start_kernel(void)
 	mm_init_cpumask(&init_mm);
 	// kernel boot command line을 saved_command_line, static_command_line에 저장
 	setup_command_line(command_line);
+	// CPU id가 몇개인지를 전역변수 nr_cpu_ids에 저장
+	// server는 2, debugger는 1이 세팅된다.
 	setup_nr_cpu_ids();
 	// NR_CPUS:4096 nr_cpumask_bits:2 nr_cpu_ids:2 nr_node_ids:1
+	// http://studyfoss.egloos.com/5375570 참고
+	// http://studyfoss.egloos.com/5377666 참고
 	setup_per_cpu_areas();
+	// smp_processor_id()에 해당하는 CPU를 ONLINE한다.
 	smp_prepare_boot_cpu();	/* arch-specific boot-cpu hooks */
 
+	// 여기가 dmesg 55%....
+	// 2014.06.21여기서부터 해야합니다.
 	build_all_zonelists(NULL, NULL);
 	page_alloc_init();
 

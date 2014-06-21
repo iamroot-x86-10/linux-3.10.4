@@ -1443,11 +1443,13 @@ static struct pcpu_alloc_info * __init pcpu_build_alloc_info(
 				size_t atom_size,
 				pcpu_fc_cpu_distance_fn_t cpu_distance_fn)
 {
+	// NR_CPUS = 256
 	static int group_map[NR_CPUS] __initdata;
 	static int group_cnt[NR_CPUS] __initdata;
 	const size_t static_size = __per_cpu_end - __per_cpu_start;
 	int nr_groups = 1, nr_units = 0;
 	size_t size_sum, min_unit_size, alloc_size;
+	// 왜 일부러 trick까지 써가면서 best_upa의 초기화를 막았을까?
 	int upa, max_upa, uninitialized_var(best_upa);	/* units_per_alloc */
 	int last_allocs, group, unit;
 	unsigned int cpu, tcpu;
@@ -1461,6 +1463,9 @@ static struct pcpu_alloc_info * __init pcpu_build_alloc_info(
 	/* calculate size_sum and ensure dyn_size is enough for early alloc */
 	size_sum = PFN_ALIGN(static_size + reserved_size +
 			    max_t(size_t, dyn_size, PERCPU_DYNAMIC_EARLY_SIZE));
+	// 만약 static_size가 page align이 되어있지 않으면 dyn_size는 같거나 커질 수 있다.
+	// 최대 4K-1만큼 커질 수 있다.
+	// 20480 = 20K
 	dyn_size = size_sum - static_size - reserved_size;
 
 	/*
@@ -1469,13 +1474,17 @@ static struct pcpu_alloc_info * __init pcpu_build_alloc_info(
 	 * which can accommodate 4k aligned segments which are equal to
 	 * or larger than min_unit_size.
 	 */
+	// PCPU_MIN_UNIT_SIZE = 32KiB
 	min_unit_size = max_t(size_t, size_sum, PCPU_MIN_UNIT_SIZE);
 
+	// alloc_size >= min_unit_size을 수 있다.
 	alloc_size = roundup(min_unit_size, atom_size);
 	upa = alloc_size / min_unit_size;
+	// upa는 alloc_size / upa의 값이 4kib 이상이 될때까지 upa--를 한다.
 	while (alloc_size % upa || ((alloc_size / upa) & ~PAGE_MASK))
 		upa--;
 	max_upa = upa;
+	// upa = 1개의 allocation당 몇개의 unit이 필요할가?
 
 	/* group cpus according to their proximity */
 	for_each_possible_cpu(cpu) {
@@ -1497,11 +1506,26 @@ static struct pcpu_alloc_info * __init pcpu_build_alloc_info(
 	}
 
 	/*
+	 * cpu == node
+	 * core == unit
+	 * 예, 2core 1cpu인 환경
+	 *	unit == 2임으로, nr_cpu_ids == 2이고,
+	 *	group은 1개으로, nr_groups == 1이다.
+	 *
+	 * 결국 group이 증가하기위해서는, 
+	 * 2 unit이 서로 remote_distance인 경우 (물리적으로 다른 cpu)가 
+	 * 있어야 한다.
+	 * 단, NUMA인 경우 물리적으로 다른 CPU라고 할지라도, 한개의 NODE에 물릴 수 도 있다.
+	 */
+
+	/*
 	 * Expand unit size until address space usage goes over 75%
 	 * and then as much as possible without using more address
 	 * space.
 	 */
 	last_allocs = INT_MAX;
+	// server 
+	// max_upa = 16;
 	for (upa = max_upa; upa; upa--) {
 		int allocs = 0, wasted = 0;
 

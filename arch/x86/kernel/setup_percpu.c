@@ -184,6 +184,8 @@ void __init setup_per_cpu_areas(void)
 		pcpu_chosen_fc = PCPU_FC_PAGE;
 #endif
 	rc = -EINVAL;
+	// PCPU_FC_PAGE = 2;
+	// 현재 pcpu_chosen_fc = 0;
 	if (pcpu_chosen_fc != PCPU_FC_PAGE) {
 		// PERCPU_MODULE_RESERVE : 8 << 10 = 8k , 
 		// PERCPU_DYNAMIC_RESERVE : 20 << 10 = 20k,
@@ -208,6 +210,8 @@ void __init setup_per_cpu_areas(void)
 		// PERCPU_FIRST_CHUNK_RESERVE : 8k
 		// dyn_size : 20k , atom_size : 2m,
 		// pcpu_cpu_distance : 
+		// pcpu_fc_alloc :
+		// pcpu_fc_free :
 		rc = pcpu_embed_first_chunk(PERCPU_FIRST_CHUNK_RESERVE,
 					    dyn_size, atom_size,
 					    pcpu_cpu_distance,

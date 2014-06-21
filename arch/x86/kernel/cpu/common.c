@@ -388,6 +388,8 @@ void switch_to_new_gdt(int cpu)
 
 	gdt_descr.address = (long)get_cpu_gdt_table(cpu);
 	gdt_descr.size = GDT_SIZE - 1;
+	// 현재 smp_processor_id()의 gdt를 GDTR에 load한다.
+	// 여기서 주소를 쓴 이유는 asm을 쓰기위해서 이다..
 	load_gdt(&gdt_descr);
 	/* Reload the per-cpu base */
 
