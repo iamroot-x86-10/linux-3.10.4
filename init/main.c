@@ -536,6 +536,11 @@ asmlinkage void __init start_kernel(void)
 	// 여기가 dmesg 55%....
 	// 2014.06.21여기서부터 해야합니다.
 	build_all_zonelists(NULL, NULL);
+	// page_alloc_cpu_notify_nb라는 notifier block을 
+	// 만들어raw_notifier_chain인 cpu_chain에 등록한다.
+	// 이때 page_alloc_cpu_notify()를 callback 함수로, priority는 0으로 설정한다.
+	// cpu_chain은 연결리스트형태이고, 이것을 조작할 때 mutex_lock과 RCU 메커니즘을 이용함.
+	// RCU 메커니즘에 대해 공부해야함!
 	page_alloc_init();
 
 	pr_notice("Kernel command line: %s\n", boot_command_line);
@@ -544,6 +549,7 @@ asmlinkage void __init start_kernel(void)
 		   __stop___param - __start___param,
 		   -1, -1, &unknown_bootoption);
 
+	// 2014.06.28, 21:00, 여기까지 완료함.
 	jump_label_init();
 
 	/*

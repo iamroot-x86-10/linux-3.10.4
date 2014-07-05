@@ -3157,6 +3157,8 @@ static int build_zonelists_node(pg_data_t *pgdat, struct zonelist *zonelist,
 	BUG_ON(zone_type >= MAX_NR_ZONES);
 	zone_type++;
 
+	// 현재 노드에서 거꾸로..
+	// NORMAL -> DMA32 -> DMA 순으로
 	do {
 		zone_type--;
 		zone = pgdat->node_zones + zone_type;
@@ -3350,7 +3352,7 @@ static void build_zonelists_in_node_order(pg_data_t *pgdat, int node)
 	int j;
 	struct zonelist *zonelist;
 
-	zonelist = &pgdat->node_zonelists[0];
+	zonelist = &pgdat->node_zonelists[0]; // 0번 리스트에는 선택된 오더순으로 정렬.
 	for (j = 0; zonelist->_zonerefs[j].zone != NULL; j++)
 		;
 	j = build_zonelists_node(NODE_DATA(node), zonelist, j,
@@ -3367,7 +3369,7 @@ static void build_thisnode_zonelists(pg_data_t *pgdat)
 	int j;
 	struct zonelist *zonelist;
 
-	zonelist = &pgdat->node_zonelists[1];
+	zonelist = &pgdat->node_zonelists[1]; // 1번 리스트에는 해당 노드의 존들로 정렬.
 	j = build_zonelists_node(pgdat, zonelist, 0, MAX_NR_ZONES - 1);
 	zonelist->_zonerefs[j].zone = NULL;
 	zonelist->_zonerefs[j].zone_idx = 0;
@@ -3467,7 +3469,7 @@ static int default_zonelist_order(void)
 	}
 	return ZONELIST_ORDER_ZONE;
 }
-
+	
 static void set_zonelist_order(void)
 {
 	if (user_zonelist_order == ZONELIST_ORDER_DEFAULT)
@@ -3483,7 +3485,7 @@ static void build_zonelists(pg_data_t *pgdat)
 	nodemask_t used_mask;
 	int local_node, prev_node;
 	struct zonelist *zonelist;
-	int order = current_zonelist_order;
+	int order = current_zonelist_order; // 1(ZONELIST_ORDER_NODE)
 
 	/* initialize zonelists */
 	for (i = 0; i < MAX_ZONELISTS; i++) {
@@ -3494,13 +3496,14 @@ static void build_zonelists(pg_data_t *pgdat)
 
 	/* NUMA-aware ordering of nodes */
 	local_node = pgdat->node_id;
-	load = nr_online_nodes;
+	load = nr_online_nodes; // 1
 	prev_node = local_node;
 	nodes_clear(used_mask);
 
 	memset(node_order, 0, sizeof(node_order));
 	j = 0;
 
+	// 대부분의 경우 노드는 하나이기 때문에 리턴되는 best_node는 0이다.
 	while ((node = find_next_best_node(local_node, &used_mask)) >= 0) {
 		/*
 		 * We don't want to pressure a particular node.
@@ -3512,11 +3515,13 @@ static void build_zonelists(pg_data_t *pgdat)
 			node_load[node] = load;
 
 		prev_node = node;
-		load--;
+		load--; // load = 0
 		if (order == ZONELIST_ORDER_NODE)
+			// pgdat->node_zonelists[0] 를 설정하였다.
 			build_zonelists_in_node_order(pgdat, node);
 		else
 			node_order[j++] = node;	/* remember order */
+		// 노드가 하나일 경우, 이 while문은 한번 수행.
 	}
 
 	if (order == ZONELIST_ORDER_ZONE) {
@@ -3536,6 +3541,7 @@ static void build_zonelist_cache(pg_data_t *pgdat)
 
 	zonelist = &pgdat->node_zonelists[0];
 	zonelist->zlcache_ptr = zlc = &zonelist->zlcache;
+	// full =1 , not full = 0
 	bitmap_zero(zlc->fullzones, MAX_ZONES_PER_ZONELIST);
 	for (z = zonelist->_zonerefs; z->zone; z++)
 		zlc->z_to_n[z - zonelist->_zonerefs] = zonelist_node_idx(z);
@@ -3656,6 +3662,9 @@ static int __build_all_zonelists(void *data)
 		pg_data_t *pgdat = NODE_DATA(nid);
 
 		build_zonelists(pgdat);
+		// 캐시에 대한 비트맵을 초기화하고,
+		// z-to-n 멤버에는 
+		// 해당 존에 대한 nid idx를 설정.
 		build_zonelist_cache(pgdat);
 	}
 
@@ -3698,11 +3707,22 @@ static int __build_all_zonelists(void *data)
  */
 void __ref build_all_zonelists(pg_data_t *pgdat, struct zone *zone)
 {
+	// current_zonelist_order = 2
+	// 현재 노드의 각 존의 사이즈를 검사해서
+	// DMA, DMA32 존의 사이즈가 전체의 절반이상이면
+	// NODE_ORDER를 쓰고, 그렇지 않으면 ZONE_ORDER
+	// 방식을 선택한다. 판단기준은 여러가지가 있다.
+	// 정리하면, 메모리가 충분한경우 현재 노드위주로
+	// 할당하는 NODE_ORDER를 선택하고, 충분하지 않으면
+	// 다른 노드를 먼저 탐색하는 ZONE_ORDER를 선택한다.
 	set_zonelist_order();
 
 	if (system_state == SYSTEM_BOOTING) {
 		__build_all_zonelists(NULL);
 		mminit_verify_zonelist();
+		// 단순히 task_struct->mems_allowes 필드(각 노드에 대한 비트맵)
+		// 멤버를 모두 set한다. (현재 task가 모든 노드의 메모리를 사용할 수
+		// 있음을 의미
 		cpuset_init_current_mems_allowed();
 	} else {
 		/* we have to stop all cpus to guarantee there is no user
@@ -3722,6 +3742,10 @@ void __ref build_all_zonelists(pg_data_t *pgdat, struct zone *zone)
 	 * made on memory-hotadd so a system can start with mobility
 	 * disabled and enable it later
 	 */
+	// 위에 nr_free_pagecache_pages() 를 통해서, 각 존의 watermark[HIGH]값
+	// 이상이 되는 페이지 수의 총합이 vm_total_pages가 된다.
+	// 이 vm_total_pages가 아래 (pageblock_nr_pages * MIGRATE_TYPES) 값보다
+	// 작으면 page_group_by_mobility 기능을 꺼야한다.
 	if (vm_total_pages < (pageblock_nr_pages * MIGRATE_TYPES))
 		page_group_by_mobility_disabled = 1;
 	else
