@@ -1157,10 +1157,17 @@ void __init mem_init(void)
 	long codesize, reservedpages, datasize, initsize;
 	unsigned long absent_pages;
 
+	// 현재 기준 kernel에서 5개의 iommu_table이 존재하며,
+	// 이에 대한 초기화코드를 수행함
+	// amd_gart_64 1EA
+	// pci-swiotlb 2EA
+	// pci-calgary_64 1ea
+	// pci-swiotlb-xen 1ea
 	pci_iommu_alloc();
 
 	/* clear_bss() already clear the empty_zero_page */
 
+	//online_node().. == 0으로 하는 일이 없음.
 	register_page_bootmem_info();
 
 	/* this will put all memory onto the freelists */

@@ -465,8 +465,11 @@ static void __init mm_init(void)
 	 * page_cgroup requires contiguous pages,
 	 * bigger than MAX_ORDER unless SPARSEMEM.
 	 */
+	// SPARSEMEM일 경우 page_cgroup_init_flatmem()를 진행하지 않음.
+	// 단, start_kernel에서 cgroup_init_early()를 진행함.
 	page_cgroup_init_flatmem();
 	mem_init();
+	// 2014.07.05 여기까지 진행
 	kmem_cache_init();
 	percpu_init_late();
 	pgtable_cache_init();
@@ -550,17 +553,25 @@ asmlinkage void __init start_kernel(void)
 		   -1, -1, &unknown_bootoption);
 
 	// 2014.06.28, 21:00, 여기까지 완료함.
+	// !HAVE_JUMP_LABEL임으로 jump
 	jump_label_init();
 
 	/*
 	 * These use large bootmem allocations and must precede
 	 * kmem_cache_init()
 	 */
+	// new_log_buf_len == 0임으로 아무작업 없음.
+	// 왜 0인가?
 	setup_log_buf(0);
 	pidhash_init();
+	// CONFIG_NUMA, CONFIG_64BIT가 설정되어 있기 때문에, 아무작업안함.
 	vfs_caches_init_early();
+	// main_extable_init == 0으로, boottime에 초기화되어서 작업없음.
 	sort_main_extable();
 	trap_init();
+	// 2014.07.05 여기까지 진행
+	// mm_init()->kmem_init_cache()할 차례
+	// http://studyfoss.egloos.com/5332580 참고
 	mm_init();
 
 	/*

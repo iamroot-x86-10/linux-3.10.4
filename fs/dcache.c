@@ -3071,7 +3071,9 @@ EXPORT_SYMBOL(d_genocide);
 
 void __init vfs_caches_init_early(void)
 {
+	// CONFIG_NUMA, CONFIG_64BIT가 설정되어 있기 때문에, 아무작업안함.
 	dcache_init_early();
+	// CONFIG_NUMA, CONFIG_64BIT가 설정되어 있기 때문에, 아무작업안함.
 	inode_init_early();
 }
 

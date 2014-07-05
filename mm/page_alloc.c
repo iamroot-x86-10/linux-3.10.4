@@ -5625,6 +5625,17 @@ __setup("hashdist=", set_hashdist);
  *   quantity of entries
  * - limit is the number of hash buckets, not the total allocation size
  */
+/*
+ * tablename = "PID"
+ * bucketsize = sizeof(*pid_hash) = 8
+ * numentries = 0
+ * scale = 18
+ * flags = HASH_EARLY | HASH_SMALL = 0x11
+ * *_hash_shift = &pidhash_shift, *pidhash_shift = 4
+ * *_hash_mask = NULL
+ * low_limit = 0
+ * high_limit = 4096
+ */
 void *__init alloc_large_system_hash(const char *tablename,
 				     unsigned long bucketsize,
 				     unsigned long numentries,
@@ -5642,12 +5653,15 @@ void *__init alloc_large_system_hash(const char *tablename,
 	/* allow the kernel cmdline to have a say */
 	if (!numentries) {
 		/* round applicable memory size up to nearest megabyte */
+		// ROUND_UP(numentries, 1MB)의 역할을 한다.
 		numentries = nr_kernel_pages;
 		numentries += (1UL << (20 - PAGE_SHIFT)) - 1;
 		numentries >>= 20 - PAGE_SHIFT;
 		numentries <<= 20 - PAGE_SHIFT;
 
 		/* limit to 1 bucket per 2^scale bytes of low memory */
+		// 1bucket = 256KiB,
+		// numentries가 PAGE단위에서, bucket단위로 바뀐다.
 		if (scale > PAGE_SHIFT)
 			numentries >>= (scale - PAGE_SHIFT);
 		else
@@ -5664,6 +5678,7 @@ void *__init alloc_large_system_hash(const char *tablename,
 		} else if (unlikely((numentries * bucketsize) < PAGE_SIZE))
 			numentries = PAGE_SIZE / bucketsize;
 	}
+	// numentries = 512로 2^n승으로 roundup.
 	numentries = roundup_pow_of_two(numentries);
 
 	/* limit allocation size to 1/16 total memory by default */
@@ -5681,7 +5696,9 @@ void *__init alloc_large_system_hash(const char *tablename,
 	log2qty = ilog2(numentries);
 
 	do {
+		// log2qty = 9
 		size = bucketsize << log2qty;
+		// size = 4096
 		if (flags & HASH_EARLY)
 			table = alloc_bootmem_nopanic(size);
 		else if (hashdist)
