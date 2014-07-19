@@ -470,6 +470,7 @@ static void __init mm_init(void)
 	page_cgroup_init_flatmem();
 	mem_init();
 	// 2014.07.05 여기까지 진행
+    // slub으로 진행
 	kmem_cache_init();
 	percpu_init_late();
 	pgtable_cache_init();

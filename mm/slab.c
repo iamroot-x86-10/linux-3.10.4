@@ -1512,7 +1512,8 @@ void __init kmem_cache_init(void)
 	if (num_possible_nodes() == 1)
 		use_alien_caches = 0;
 
-	for (i = 0; i < NUM_INIT_LISTS; i++)
+	// NUM_INIT_LIST = 3 * MAX_NUMNODES = 3 * 1024 = 3072
+    for (i = 0; i < NUM_INIT_LISTS; i++)
 		kmem_cache_node_init(&init_kmem_cache_node[i]);
 
 	set_up_node(kmem_cache, CACHE_CACHE);

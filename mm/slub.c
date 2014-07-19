@@ -3591,7 +3591,8 @@ void __init kmem_cache_init(void)
 	static __initdata struct kmem_cache boot_kmem_cache,
 		boot_kmem_cache_node;
 
-	if (debug_guardpage_minorder())
+	// debug_guardpage_minorder() = 0
+    if (debug_guardpage_minorder())
 		slub_max_order = 0;
 
 	kmem_cache_node = &boot_kmem_cache_node;
