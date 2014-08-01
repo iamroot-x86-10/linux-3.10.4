@@ -587,13 +587,14 @@ asmlinkage void __init start_kernel(void)
 	 */
 	preempt_disable();
 	if (WARN(!irqs_disabled(), "Interrupts were enabled *very* early, fixing it\n"))
-		local_irq_disable();
-	idr_init_cache();
-	perf_event_init();
-	rcu_init();
-	tick_nohz_init();
-	radix_tree_init();
+		local_irq_disable(); // inline assembly "cli
+	idr_init_cache(); // http://studyfoss.egloos.com/5187192
+	perf_event_init(); // 우선, perf skip..
+	rcu_init(); // http://barriosstory.blogspot.kr/2009/01/rcu.html
+	tick_nohz_init(); // http://studyfoss.egloos.com/5128961 
+	radix_tree_init(); // http://m.oschina.net/blog/61887
 	/* init some links before init_ISA_irqs() */
+	// 2014.07.26, 여기까지.
 	early_irq_init();
 	init_IRQ();
 	tick_init();

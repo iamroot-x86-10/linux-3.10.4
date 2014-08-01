@@ -1406,6 +1406,7 @@ radix_tree_node_ctor(void *node)
 
 static __init unsigned long __maxindex(unsigned int height)
 {
+	// RADIX_TREE_MAP_SHIFT = 6
 	unsigned int width = height * RADIX_TREE_MAP_SHIFT;
 	int shift = RADIX_TREE_INDEX_BITS - width;
 

@@ -1956,13 +1956,19 @@ void __init percpu_init_late(void)
 
 	for (i = 0; (chunk = target_chunks[i]); i++) {
 		int *map;
+		// PERCPU_DYNAMIC_EARLY_SLOTS => 128, sizeof(map[0]) => 4
+		// size = 512
 		const size_t size = PERCPU_DYNAMIC_EARLY_SLOTS * sizeof(map[0]);
 
 		BUILD_BUG_ON(size > PAGE_SIZE);
 
+		// 아래는 실제 kmalloc()을 통해 메모리 할당을 하며,
+		// 이전에 생성한 "kmalloc-#" 캐시의 슬랩에서 할당될 것이다.
 		map = pcpu_mem_zalloc(size);
 		BUG_ON(!map);
 
+		// 단순히, 동기화처리하고 기존의 temporary 영역의 percpu 정보를
+		// 새로 할당한 메모리에 복사한다.
 		spin_lock_irqsave(&pcpu_lock, flags);
 		memcpy(map, chunk->map, size);
 		chunk->map = map;

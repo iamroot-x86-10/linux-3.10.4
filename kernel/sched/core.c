@@ -6912,6 +6912,9 @@ void __init sched_init(void)
 	int i, j;
 	unsigned long alloc_size = 0, ptr;
 
+	// 필요한 자료구조의 각 포인터 멤버들에 대한
+	// 메모리를 각 옵션에 따라 모두 할당하고 초기화.
+
 #ifdef CONFIG_FAIR_GROUP_SCHED
 	alloc_size += 2 * nr_cpu_ids * sizeof(void **);
 #endif
@@ -6952,6 +6955,11 @@ void __init sched_init(void)
 	init_defrootdomain();
 #endif
 
+	// 기존의 O(1) 스케쥴러의 단점을 해결하기 위해,
+	// CFS스케쥴러가 도입되었고, 기존 단점을 극복하였다.
+	// 참고: http://enginius.tistory.com/96
+	// 참고: http://cluster1.cafe.daum.net/_c21_/bbs_search_read?grpid=1K80b&fldid=7F0Q&datanum=17&openArticle=true&docid=1K80b7F0Q1720100726203307
+	// 참고: http://studyfoss.egloos.com/5326671
 	init_rt_bandwidth(&def_rt_bandwidth,
 			global_rt_period(), global_rt_runtime());
 
@@ -7082,6 +7090,7 @@ void __init sched_init(void)
 #endif
 	init_sched_fair_class();
 
+	// 이 값이 1이되면, 스케쥴러를 사용할 수 있다.
 	scheduler_running = 1;
 }
 

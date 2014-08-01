@@ -1189,7 +1189,21 @@ void __init vm_area_register_early(struct vm_struct *vm, size_t align)
 
 void __init vmalloc_init(void)
 {
-	struct vmap_area *va;
+	/*
+		커널영역에서는, 전체 vm_struct는 vmlist가 연결리스트로 관리를 하고 있다.
+		(이 vmlist는 이전에 혹 가상메모리 영역을 사용했을 경우 vmlist가 알고있다..)
+		vm_struct 전체를 참고할 때 vmlist가 사용된다. 그리고 개별 vm_struct의 빠른
+		접근을 위해서 vm_struct들 은 rb-tree로 유지되는데 각 노드는 vmap_area로 관리된다
+
+		 vmlist
+		   |
+	   --------------------------------------------------
+     (vm_struct) -> (vm_struct) ...  ==>> 이것들은 실제 vmalloc영역 메모리를 서술
+		 --------------------------------------------------
+
+     vmap_area(vm_struct의 start, end 등 정보포함) ==>> 이놈들은 rb-tree로 관리.
+  */
+	struct vmap_area *va; // vm_struct를 관리하기 위한 구조.
 	struct vm_struct *tmp;
 	int i;
 
@@ -1206,6 +1220,10 @@ void __init vmalloc_init(void)
 	}
 
 	/* Import existing vmlist entries. */
+	/*
+		 이전에 vmlist 내용이 있다면, 고급구조인 vmap_area로 대체하여
+		 rb-tree로 관리된다.
+	*/
 	for (tmp = vmlist; tmp; tmp = tmp->next) {
 		va = kzalloc(sizeof(struct vmap_area), GFP_NOWAIT);
 		va->flags = VM_VM_AREA;
