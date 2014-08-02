@@ -90,10 +90,11 @@ void __init init_IRQ(void)
 	 * We probably need a better place for this, but it works for
 	 * now ...
 	 */
+	// skip.. 비어있음.
 	x86_add_irq_domains();
 
 	/*
-	 * On cpu 0, Assign IRQ0_VECTOR..IRQ15_VECTOR's to IRQ 0..15.
+	 * On cpu 0, Assign IRQ0_VECTOR..IRQ15_VECTOR's to IRQ 0..15. <<-- IRQ_LAGACY을 cpu0에대가 묶는다.
 	 * If these IRQ's are handled by legacy interrupt-controllers like PIC,
 	 * then this configuration will likely be static after the boot. If
 	 * these IRQ's are handled by more mordern controllers like IO-APIC,
@@ -101,6 +102,7 @@ void __init init_IRQ(void)
 	 * irq's migrate etc.
 	 */
 	for (i = 0; i < legacy_pic->nr_legacy_irqs; i++)
+		/* On cpu 0, Assign IRQ0_VECTOR..IRQ15_VECTOR's to IRQ 0..15. <<-- IRQ_LAGACY을 cpu0에대가 묶는다.*/
 		per_cpu(vector_irq, 0)[IRQ0_VECTOR + i] = i;
 
 	x86_init.irqs.intr_init();
@@ -157,6 +159,11 @@ static void __init smp_intr_init(void)
 
 static void __init apic_intr_init(void)
 {
+	// IPI(interprocessor Interrupt: Processor간에 interrupt가 필요할 때 발생하는 interrupt로,
+	// 예를 들어 한 processor에서 page fault가 발생해서 tlb를 업데이트할 필요가 발생할 경우,
+	// 다른 processor들에게 IPI를 날려서 tlb를 업데이트 하도록 알려준다.
+	// 이때 이런 IPI들의 실행순서를 스케쥴링하는 함수들을 설정하는 함수.
+	// http://www.cheesecake.org/sac/smp.html 참고
 	smp_intr_init();
 
 #ifdef CONFIG_X86_THERMAL_VECTOR
@@ -194,8 +201,12 @@ void __init native_init_IRQ(void)
 	int i;
 
 	/* Execute any quirks before the call gates are initialised: */
+	// quirks란 cpu별로 필요한 부가작업을 진행하는 fixup code를 칭하는 것으로,
+	// x86 CPU중에서 H/W IRQ balancing등을 위해서 부가작업이 필요한 애들이 있다.
+	// x86의 경우 PIC(chip:8259A)를 초기화하는 등의 작업이 있다.
 	x86_init.irqs.pre_vector_init();
 
+	// 실제 필요한 Interrupt를 설정한다.
 	apic_intr_init();
 
 	/*
@@ -203,6 +214,8 @@ void __init native_init_IRQ(void)
 	 * us. (some of these will be overridden and become
 	 * 'special' SMP interrupts)
 	 */
+	// FIRST_EXTERNAL_VECTOR = 0x20;
+	// intel에 의해서 예약된 32개의 interrupt를 뜻함.
 	i = FIRST_EXTERNAL_VECTOR;
 	for_each_clear_bit_from(i, used_vectors, NR_VECTORS) {
 		/* IA32_SYSCALL_VECTOR could be used in trap_init already. */

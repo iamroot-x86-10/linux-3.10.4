@@ -219,6 +219,10 @@ int __init early_irq_init(void)
 
 	/* Let arch update nr_irqs and return the nr of preallocated irqs */
 	initcnt = arch_probe_nr_irqs();
+	// dmesg에서 출력된 결과 [    0.000000] NR_IRQS:16640 nr_irqs:1016 16
+	// NR_IRQS: 현재 OS에 설정된 설정값에서 가능한 irq의 max 개수 CPU의 개수등이 영향을 미침.
+	// nr_irqs: 현재 system의 hw정보에 따라 가능한 irq의 max 개수 --> i7의 경우 1016, celeron G1610의 경우 512값을 가짐
+	// initcnt: NR_IRQS_LEGACY (16) : linux에서 기본으로 사용되는 irq의 개수
 	printk(KERN_INFO "NR_IRQS:%d nr_irqs:%d %d\n", NR_IRQS, nr_irqs, initcnt);
 
 	if (WARN_ON(nr_irqs > IRQ_BITMAP_BITS))
@@ -227,9 +231,12 @@ int __init early_irq_init(void)
 	if (WARN_ON(initcnt > IRQ_BITMAP_BITS))
 		initcnt = IRQ_BITMAP_BITS;
 
+	// 최종적으로 irq의 개수는 IRQ_BITMAP_BITS값에 한정된다.
 	if (initcnt > nr_irqs)
 		nr_irqs = initcnt;
 
+	// http://wiki.osdev.org/IRQ
+	// 0 - 15는 standard ISA IRQs를 설정한다.
 	for (i = 0; i < initcnt; i++) {
 		desc = alloc_desc(i, node, NULL);
 		set_bit(i, allocated_irqs);

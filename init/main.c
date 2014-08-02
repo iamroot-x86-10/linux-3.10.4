@@ -595,8 +595,15 @@ asmlinkage void __init start_kernel(void)
 	radix_tree_init(); // http://m.oschina.net/blog/61887
 	/* init some links before init_ISA_irqs() */
 	// 2014.07.26, 여기까지.
+	// Exception, S/W Interrupt는 이전에 설정을 완료했고,
+	// 현재 H/W Interrupt, IRQ를 설정하는데,
+	// 시스템에서 최대 설정할 수 있는 IRQ max nr의 limit를 설정하고,
+	// 16개의 lagacy IRQ는 직접 irq_desc struct를 할당하고 설정한다.
+	// http://wiki.osdev.org/IRQ#Interrupt_Overview 참고
 	early_irq_init();
+	// 
 	init_IRQ();
+	// 
 	tick_init();
 	init_timers();
 	hrtimers_init();
