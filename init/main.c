@@ -601,21 +601,42 @@ asmlinkage void __init start_kernel(void)
 	// 16개의 lagacy IRQ는 직접 irq_desc struct를 할당하고 설정한다.
 	// http://wiki.osdev.org/IRQ#Interrupt_Overview 참고
 	early_irq_init();
-	// 
+	// 0 - 15번 standard ISA IRQ 설정
+	// smp에서 processor간 interrupt를 위한 IPI 설정 (코드내 주석 참고)
+	// timer, 등등의 기타 irq 설정
 	init_IRQ();
-	// 
+	// cpu0에 clock event 관련 함수 설정
 	tick_init();
+	// timer API (row-resolution)를 사용하기 위한 softIRQ 설정
 	init_timers();
+	// High-resolution kernel timers API를 사용하기 위한 설정
 	hrtimers_init();
+	// softirq와 tasklet을 위한 설정
+	// http://www.iamroot.org/xe/Kernel_7_ARM/55439 참고
+	// Tasklet 
+	// : Kernel 에서 interrupt에 대한 처리를 수행 할 때 Hardware Dependant 한 부분이 아닌 순수하게 Software 처리 가능한 부분 
+	// (Function)을 Tasklet에 넣어 나중에 처리가능하도록 하여 nested interrupt 에 대한 유연한 처리를 도움.
 	softirq_init();
+	// timekeeping: linux는 기본적으로 time을 기반으로 모든 작업이 진행되기 때문에(interrupt 포함)
+	// timer interrupt를 설정한 이후에 기반이 되는 가장 최신의 시간을 저장함.
+	// 현재 시간을 계산해서 저장해둠
+	// APIC를 이용해서 시간을 가져와서 저장함.
 	timekeeping_init();
+	// late_time_init 함수포인터에 x86_late_time_init()를 설정함. 차후에 late_time_init()을 호출함.
 	time_init();
+	// prof_on이 0으로 설정되어있고, 그로인해 skip됨.
 	profile_init();
+	// 각 cpu별 CFD(struct call_function_data) 초기화.
+	// CFD가 무슨 역할을 하는지는 모르겠음.
 	call_function_init();
+	// irqs_disabled() == false
 	WARN(!irqs_disabled(), "Interrupts were enabled early\n");
 	early_boot_irqs_disabled = false;
+	// sti(set interrupt flag)를 설정하여 interrupt 처리가 가능하게 설정한다.
+	// http://kernelx.weebly.com/interrupts.html 참고
 	local_irq_enable();
 
+	// slub에서 빈 함수로 skip.
 	kmem_cache_init_late();
 
 	/*
@@ -623,10 +644,15 @@ asmlinkage void __init start_kernel(void)
 	 * we've done PCI setups etc, and console_init() must be aware of
 	 * this. But we do want output early, in case something goes wrong.
 	 */
+	// http://www.linux.it/~rubini/docs/serial/serial.html 참고
+	// 위 페이지의 마지막 그림에서, line discipline layer를 N_TTY로 설정하고,
+	// low-level driver에 해당하는 3가지 driver(vt, hvc, serial 8250)을 설정한다.
 	console_init();
 	if (panic_later)
 		panic(panic_later, panic_param);
 
+	// Lock관련된 CONFIG_LOCKDEP가 설정되어있지않고,
+	// 설정되어있다면 lock관련 정보들을 출력한다.
 	lockdep_info();
 
 	/*
@@ -634,9 +660,12 @@ asmlinkage void __init start_kernel(void)
 	 * to self-test [hard/soft]-irqs on/off lock inversion bugs
 	 * too:
 	 */
+	//CONFIG_DEBUG_LOCKING_API_SELFTESTS이 설정되어있지 않아 skip.
+	//되어있으면 lock테스트수행
 	locking_selftest();
 
 #ifdef CONFIG_BLK_DEV_INITRD
+	// initrd_start == 0으로 skip
 	if (initrd_start && !initrd_below_start_ok &&
 	    page_to_pfn(virt_to_page((void *)initrd_start)) < min_low_pfn) {
 		pr_crit("initrd overwritten (0x%08lx < 0x%08lx) - disabling it.\n",
@@ -645,16 +674,33 @@ asmlinkage void __init start_kernel(void)
 		initrd_start = 0;
 	}
 #endif
+	// CONFIG_MEMCG not setup되어 skip.
 	page_cgroup_init();
+	// CONFIG_DEBUG_OBJECTS not setup되어 skip.
 	debug_objects_mem_init();
+	// CONFIG_DEBUG_KMEMLEAK not setup되어 skip.
 	kmemleak_init();
+	// NODE별로 zone을 가지고 있고, 각 zone에는 per_cpu_pageset구조체를 가지고 있다.
+	// 리눅스커널의 이해 334페이지 참고.
+	// arm용 자료 114페이지 그림 참고.
 	setup_per_cpu_pageset();
+	// 요건 이해가... 잘 안되는데.. 찾아봅시다.
 	numa_policy_init();
+	// TSC,PIT등 time을 저장하는 hardware 장치를 초기화하고 현재시간으로 등록해줌.
 	if (late_time_init)
 		late_time_init();
+	// 각 cpu별 struct sched_clock_data를 현재 kernel의 시간을 설정해줌.
+	// shed_clock_running = 1로 설정하여, 스케줄러가 동작함을 알림.
 	sched_clock_init();
+	// BogoMIPS값을 계산하기 위한 것으로, MIPS는 Milions of Instruction Per Second라는 뜻으로,
+	// 1 jiffy동한 empty loop가 얼마나 도는지를 게산한 수치를 말한다.
+	// 어디다 쓰나?
+	// 디버깅용, 혹은 turbo button의 동작여부 검증 등에 쓰인다.
+	// 전혀 과학적이지 않은 값임.
 	calibrate_delay();
+	// pid 0을 위한 page 및 관련 cache를 생성함.
 	pidmap_init();
+	// 2014.8.2 여기까지 진행.
 	anon_vma_init();
 #ifdef CONFIG_X86
 	if (efi_enabled(EFI_RUNTIME_SERVICES))

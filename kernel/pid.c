@@ -584,12 +584,23 @@ void __init pidmap_init(void)
 	BUILD_BUG_ON(PID_MAX_LIMIT >= PIDNS_HASH_ADDING);
 
 	/* bump default and minimum pid_max based on number of cpus */
+	// pid_max = 0x8000 = 32768
 	pid_max = min(pid_max_max, max_t(int, pid_max,
 				PIDS_PER_CPU_DEFAULT * num_possible_cpus()));
+	// pid_max_min = 300 + 1 = 301
 	pid_max_min = max_t(int, pid_max_min,
 				PIDS_PER_CPU_MIN * num_possible_cpus());
+	// 현재 dmesg 확인
+	// 0.000006] pid_max: default: 32768 minimum: 301
 	pr_info("pid_max: default: %u minimum: %u\n", pid_max, pid_max_min);
 
+	// init_pid_ns namespace에서 pid 0이 사용할 페이지를 Pidmap
+	// 배열의 0번 index에서 page를 할당받고 pid 0을 사용중으로 표
+	// 시한 후 pid 구조체의 슬랩캐시(pid_cachep)를 생성함
+	// pid 0 ==> 현재 생성하는 최고,최초의 process
+	// pid 1 ==> /sbin/init
+	// pid 2 ==> /kthreadd
+	// pic 3 ... ==> ppid가 1이거나 2거나 둘중하나가 됨.
 	init_pid_ns.pidmap[0].page = kzalloc(PAGE_SIZE, GFP_KERNEL);
 	/* Reserve PID 0. We never call free_pidmap(0) */
 	set_bit(0, init_pid_ns.pidmap[0].page);

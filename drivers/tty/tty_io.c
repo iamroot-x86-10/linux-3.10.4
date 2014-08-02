@@ -3480,12 +3480,17 @@ void __init console_init(void)
 	initcall_t *call;
 
 	/* Setup the default TTY line discipline. */
+	// default TTY인 N_TTY(0)을 line discipline(ldisc)로 설정한다.
 	tty_ldisc_begin();
 
 	/*
 	 * set up the console device so that later boot sequences can
 	 * inform about problems etc..
 	 */
+	// drivers/tty/vt/vt.c에 console_init() 
+	// drivers/tty/hvc/hvc_console.c에 hvc_console_init()
+	// drivers/tty/serial/8250/8250_core.c에 serial_8250_console_init()
+	// 위의 low-level driver 3개 드라이버를 초기화하는 함수를 호출해준다.
 	call = __con_initcall_start;
 	while (call < __con_initcall_end) {
 		(*call)();
